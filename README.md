@@ -1,11 +1,14 @@
 # sai2-environment
 current usage:
+```
 /project_name
 ├── sai2_environment
 │   ├── client.py
 │   └── robot_env.py
 └── train.py
+```
 
+```
 def main():
 
     env = RobotEnv(
@@ -21,3 +24,4 @@ def main():
                     
 if __name__ == "__main__":
     main()
+```
