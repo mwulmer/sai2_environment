@@ -12,8 +12,10 @@ class RedisClient(object):
         self._conn = None
 
         #init keys to read/write to redis server
-        self.ACTION_SPACE_KEY = "sai2::ReinforcementLearning::ActionSpace"
-        self.ACTION_KEY = "sai2::ReinforcementLearning::Action"
+        self.ACTION_SPACE_KEY = "sai2::ReinforcementLearning::action_space"
+        #self.ACTION_KEY = "sai2::ReinforcementLearning::Action"
+        self.ACTION_KEY =  "sai2::PandaApplication::controller::desired_position"
+        self.START_ACTION_KEY = "sai2::ReinforcementLearning::start_action"
         self.CAMERA_DATA_KEY  = "sai2::ReinforcementLearning::camera_data"
 
         if self._sim:
@@ -59,6 +61,15 @@ class RedisClient(object):
 
     def redis2array(self, serialized_arr: str) -> np.array:
         return np.array(json.loads(serialized_arr))
+
+    def take_action(self, action):
+        self.set(self.START_ACTION_KEY, 1)
+        return self.set(self.ACTION_KEY, self.array2redis(action))    
+
+
+
+    def set_action_space(self, action_space):
+        return self.set(self.ACTION_SPACE_KEY, action_space)
 
     def array2redis(self, arr: np.array) -> str:
         return json.dumps(arr.tolist())
