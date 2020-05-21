@@ -13,6 +13,10 @@ class RedisClient(object):
         self._sim = self.config['simulation']
         self._conn = None
 
+        self._action_space = None
+        self._action_space_size = None
+        self._reset_action = None
+
         #TODO there certainly is a nicer way to do this
         #init keys to read/write to redis server
         self.ACTION_SPACE_KEY = "sai2::ReinforcementLearning::action_space"
@@ -68,12 +72,9 @@ class RedisClient(object):
         q = self.redis2array(self.get(self.JOINT_ANGLES_KEY))
         dq = self.redis2array(self.get(self.JOINT_VELOCITIES_KEY))
         tau = self.redis2array(self.get(self.JOINT_TORQUES_COMMANDED_KEY))
-        #TODO add contact
-        #contact = self.redis2array(self.get(self.SENSED_CONTACT_KEY))
-        #print(contact)
-        #TODO EE Pose
-
-        return np.concatenate([q, dq, tau])
+        contact = self.redis2array(self.get(self.SENSED_CONTACT_KEY))
+        
+        return np.append(np.concatenate([q, dq, tau]), contact) 
 
     def redis2array(self, serialized_arr: str) -> np.array:
         return np.array(json.loads(serialized_arr))
@@ -82,8 +83,12 @@ class RedisClient(object):
         self.set(self.ACTION_KEY, self.array2redis(action))    
         return self.set(self.START_ACTION_KEY, 1)  
 
-    def set_action_space(self, action_space):
-        return self.set(self.ACTION_SPACE_KEY, action_space.value)
+    def set_action_space(self, robot_action):
+        self._action_space = robot_action.action_space
+        self._action_space_size = robot_action.action_space_size().shape
+        self._reset_action = -1*np.ones((self._action_space_size))
+        print(self._reset_action)
+        return self.set(self.ACTION_SPACE_KEY, self._action_space.value)
 
     def array2redis(self, arr: np.array) -> str:
         return json.dumps(arr.tolist())
@@ -94,8 +99,8 @@ class RedisClient(object):
     def action_complete(self) -> bool:
         return int(self.get(self.ACTION_COMPLETE_KEY).decode()) == 1
 
-    def reset_robot(self) -> bool:
-        self.take_action(np.array([-1, -1, -1, -1, -1, -1, -1]))
+    def reset_robot(self) -> bool:        
+        self.take_action(self._reset_action)
         robot_is_reset = self.robot_is_reset()
         waited_time = 0
         if not robot_is_reset:
@@ -133,6 +138,10 @@ class RedisClient(object):
                 return False
         #TODO move this to logging
         print("[INFO] Successfully reset simulator and controller!")
+
+        #send the reset action again such that the controller knows the current action space
+        self.take_action(self._reset_action)
+        self.set(self.ACTION_SPACE_KEY, self._action_space.value)
         return True
 
 
