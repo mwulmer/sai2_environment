@@ -20,23 +20,26 @@ class RobotEnv(object):
                  blocking_action=False,
                  rotate_only_z=False):
         #connect to redis server
+        hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
+        
         self.env_config = {
-            'simulation': simulation,
-            'render': render,
-            'camera_resolution': (128, 128),
-            'hostname': "127.0.0.1",
-            'port': 6379,
-            'blocking_action': blocking_action,
-            'rotate_only_z': rotate_only_z
-        }
-
+                'simulation': simulation,
+                'render': render,
+                'camera_resolution': (128, 128),
+                'hostname': hostname,
+                'port': 6379,
+                'blocking_action': blocking_action,
+                'rotate_only_z': rotate_only_z
+            }
+       
+        #192.168.4.8
         #connect redis client
         self._client = RedisClient(config=self.env_config)
         self._client.connect()
 
         #TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
-        self.task = task_class('tmp', self._client)
+        self.task = task_class('tmp', self._client, simulation=simulation)
 
         #set action space to redis
         self._robot_action = RobotAction(action_space, isotropic_gains)
@@ -125,6 +128,10 @@ class RobotEnv(object):
         return reward, done
 
     def _get_obs(self):
-        camera_frame = self._client.get_camera_frame()
-        robot_state = self._client.get_robot_state()
+        if self.env_config['simulation']:
+            camera_frame = self._client.get_camera_frame()
+            robot_state = self._client.get_robot_state()
+        else:
+            camera_frame = 0
+            robot_state = 0
         return camera_frame, robot_state
