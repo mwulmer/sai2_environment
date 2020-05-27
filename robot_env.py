@@ -1,16 +1,18 @@
 import numpy as np
+from gym import spaces
 from sai2_environment.client import RedisClient
 from sai2_environment.action_space import ActionSpace, RobotAction
 import time
 from sai2_environment.utils import name_to_task_class
+from ipdb import set_trace
 
 from scipy.spatial.transform import Rotation as Rot
 
 
 class RobotEnv(object):
-    '''
-    The central wrapper around the robot control. 
-    '''
+    """
+    The central wrapper around the robot control.
+    """
     def __init__(self,
                  name='move_object_to_target',
                  simulation=True,
@@ -18,22 +20,22 @@ class RobotEnv(object):
                  action_space=ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP,
                  isotropic_gains=True,
                  blocking_action=False,
-                 rotate_only_z=False):
-        #connect to redis server
+                 rotation_axis=(True, True, True)):
+
+        # connect to redis server
         hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
-        
         self.env_config = {
-                'simulation': simulation,
-                'render': render,
-                'camera_resolution': (128, 128),
-                'hostname': hostname,
-                'port': 6379,
-                'blocking_action': blocking_action,
-                'rotate_only_z': rotate_only_z
-            }
-       
-        #192.168.4.8
-        #connect redis client
+            'simulation': simulation,
+            'render': render,
+            'camera_resolution': (128, 128),
+            'hostname': hostname,
+            'port': 6379,
+            'blocking_action': blocking_action,
+            'rotate_only_z': sum(rotation_axis) < 3 and rotation_axis[2]
+            #'rotation_axis': rotation_axis
+        }
+
+        # connect redis client
         self._client = RedisClient(config=self.env_config)
         self._client.connect()
 
@@ -41,15 +43,20 @@ class RobotEnv(object):
         task_class = name_to_task_class(name)
         self.task = task_class('tmp', self._client, simulation=simulation)
 
-        #set action space to redis
-        self._robot_action = RobotAction(action_space, isotropic_gains)
+        # set action space to redis
+        self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
         self._client.set_action_space(self._robot_action)
         self._reset_counter = 0
 
+        self.observation_space = {
+            "state": self._client.get_robot_state().shape,
+            "center": (3, 128, 128)}
+        self.action_space = self._robot_action.action_space_size()
+
     def reset(self):
-        #need to reset simulator different from robot
-        #these functions wait for the environemnt(simulation) or real robot to be reset
+        # need to reset simulator different from robot
+        # these functions wait for the environemnt(simulation) or real robot to be reset
         if not self.env_config['simulation'] or (self._reset_counter == 0):
             '''
             bring the robot back to its initial state if we are in the real world 
@@ -57,16 +64,16 @@ class RobotEnv(object):
             '''
             self._client.reset_robot()
         else:
-            #if in simulation, hard reset both simulator and controller
+            # if in simulation, hard reset both simulator and controller
             self._client.env_hard_reset()
 
-        print("-------------------------------------")
+        print("--------------------------------S-----")
         print("[INFO] Robot state is reset")
         self._reset_counter += 1
-        reward = None
-        done = False
-        info = None
-        return self._get_obs(), reward, done, info
+        return self._get_obs()
+
+    def convert_image(self, im):
+        return np.rollaxis(im, axis=2, start=0)
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -78,25 +85,25 @@ class RobotEnv(object):
         return Rot.from_quat(quaternion).as_dcm()
 
     def step(self, action):
-        if(self.env_config['rotate_only_z']):
-            x = action[:3]
-            rot = np.pi*action[3]            
-            quat = self.rotvec_to_quaternion(np.array([rot, 0, 0]))
-            print(quat)
-            stiffness = action[4:]
-            action = np.concatenate([x, quat, stiffness])
-
         assert action.shape == self._robot_action.action_space_size(
         ).shape, "Action shape not correct, expected shape {}".format(self._robot_action.action_space_size(
         ).shape)
-        #blocking action waits until the action is carried out and computes reward along the trajectory
+
+        if self.env_config['rotate_only_z']:
+            x = action[:3]
+            rot = np.pi*action[3]            
+            quat = self.rotvec_to_quaternion(np.array([rot, 0, 0]))
+            # print(x, quat)
+            stiffness = action[4:]
+            action = np.concatenate([x, quat, stiffness])
+
+        # blocking action waits until the action is carried out and computes reward along the trajectory
         if self.env_config['blocking_action']:
-            #first check if there is still something going on on the robot
-            print("Waiting for robot: {}".format(
-                self._client.action_complete()))
+            # first check if there is still something going on on the robot
+            # print("Waiting for robot: {}".format(
+                #self._client.action_complete()))
             while not self._client.action_complete():
                 time.sleep(0.01)
-
             self.take_action(action)
             time.sleep(0.01)
 
@@ -105,12 +112,12 @@ class RobotEnv(object):
 
             reward, done = self._compute_reward()
 
-        #non-blocking does not wait and computes reward right away
+        # non-blocking does not wait and computes reward right away
         else:
             self.take_action(action)
             reward, done = self._compute_reward()
 
-        print("Reward: {}".format(reward))
+        #print("Reward: {}".format(reward))
         info = None
         return self._get_obs(), reward, done, info
 
@@ -129,9 +136,9 @@ class RobotEnv(object):
 
     def _get_obs(self):
         if self.env_config['simulation']:
-            camera_frame = self._client.get_camera_frame()
+            camera_frame = self.convert_image(self._client.get_camera_frame())
             robot_state = self._client.get_robot_state()
         else:
             camera_frame = 0
-            robot_state = 0
+            robot_state = 0        
         return camera_frame, robot_state
