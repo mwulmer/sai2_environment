@@ -84,10 +84,15 @@ class RobotEnv(object):
     def quaternion_to_rot(self, quaternion):
         return Rot.from_quat(quaternion).as_dcm()
 
+
+
     def step(self, action):
         assert action.shape == self._robot_action.action_space_size(
         ).shape, "Action shape not correct, expected shape {}".format(self._robot_action.action_space_size(
         ).shape)
+
+        #build the full action if 
+        action = self._robot_action.build_full_command(action)
 
         if self.env_config['rotate_only_z']:
             x = action[:3]
