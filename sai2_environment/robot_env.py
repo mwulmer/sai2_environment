@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 from sai2_environment.client import RedisClient
-from sai2_environment.action_space import ActionSpace, RobotAction
+from sai2_environment.action_space import *
 import time
 from sai2_environment.utils import name_to_task_class
 from ipdb import set_trace
@@ -23,11 +23,12 @@ class RobotEnv(object):
                  rotation_axis=(True, True, True)):
 
         # connect to redis server
+        hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
         self.env_config = {
             'simulation': simulation,
             'render': render,
             'camera_resolution': (128, 128),
-            'hostname': "127.0.0.1",
+            'hostname': hostname,
             'port': 6379,
             'blocking_action': blocking_action,
             'rotate_only_z': sum(rotation_axis) < 3 and rotation_axis[2]
@@ -40,17 +41,20 @@ class RobotEnv(object):
 
         #TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
-        self.task = task_class('tmp', self._client)
+        self.task = task_class('tmp', self._client, simulation=simulation)
 
         # set action space to redis
-        self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
+        self._robot_action = get_robot_action(action_space, isotropic_gains,
+                                              rotation_axis)
+        #self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
         self._client.set_action_space(self._robot_action)
         self._reset_counter = 0
 
         self.observation_space = {
             "state": self._client.get_robot_state().shape,
-            "center": (3, 128, 128)}
+            "center": (3, 128, 128)
+        }
         self.action_space = self._robot_action.action_space_size()
 
     def reset(self):
@@ -69,7 +73,7 @@ class RobotEnv(object):
         print("--------------------------------S-----")
         print("[INFO] Robot state is reset")
         self._reset_counter += 1
-        return self._get_obs()
+        return self._get_obs(), 0, False, None
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)
@@ -77,30 +81,24 @@ class RobotEnv(object):
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
         #[w, x, y, z]
-        idx = [3, 0, 1, 2] 
-        return quat[idx] 
+        idx = [3, 0, 1, 2]
+        return quat[idx]
 
     def quaternion_to_rot(self, quaternion):
         return Rot.from_quat(quaternion).as_dcm()
 
     def step(self, action):
         assert action.shape == self._robot_action.action_space_size(
-        ).shape, "Action shape not correct, expected shape {}".format(self._robot_action.action_space_size(
-        ).shape)
-
-        if self.env_config['rotate_only_z']:
-            x = action[:3]
-            rot = np.pi*action[3]            
-            quat = self.rotvec_to_quaternion(np.array([rot, 0, 0]))
-            # print(x, quat)
-            stiffness = action[4:]
-            action = np.concatenate([x, quat, stiffness])
+        ), "Action shape not correct, expected shape {}".format(
+            self._robot_action.action_space_size())
+        #build the full action if
+        action = self._robot_action.build_full_command(action)
 
         # blocking action waits until the action is carried out and computes reward along the trajectory
         if self.env_config['blocking_action']:
             # first check if there is still something going on on the robot
             # print("Waiting for robot: {}".format(
-                #self._client.action_complete()))
+            #self._client.action_complete()))
             while not self._client.action_complete():
                 time.sleep(0.01)
             self.take_action(action)
@@ -134,6 +132,10 @@ class RobotEnv(object):
         return reward, done
 
     def _get_obs(self):
-        camera_frame = self._client.get_camera_frame()
-        robot_state = self._client.get_robot_state()
-        return self.convert_image(camera_frame), robot_state
+        if self.env_config['simulation']:
+            camera_frame = self.convert_image(self._client.get_camera_frame())
+            robot_state = self._client.get_robot_state()
+        else:
+            camera_frame = 0
+            robot_state = 0
+        return camera_frame, robot_state

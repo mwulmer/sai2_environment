@@ -15,7 +15,7 @@ class RedisClient(object):
         self._sim = self._config['simulation']
 
         self._conn = None
-        self._keys = RedisKeys(self._sim)
+        self.keys = RedisKeys(self._sim)
 
         self._action_space = None
         self._action_space_size = None
@@ -36,7 +36,7 @@ class RedisClient(object):
         self._conn.ping()
 
     def get_camera_frame(self) -> np.array:
-        data = self.redis2array(self.get(self._keys.CAMERA_DATA_KEY))
+        data = self.redis2array(self.get(self.keys.CAMERA_DATA_KEY))
         (w, h) = self._camera_resolution
         b = np.reshape(data[0::3], (w, h))
         g = np.reshape(data[1::3], (w, h))
@@ -45,11 +45,11 @@ class RedisClient(object):
         return frame
 
     def get_robot_state(self) -> np.array:
-        q = self.redis2array(self.get(self._keys.JOINT_ANGLES_KEY))
-        dq = self.redis2array(self.get(self._keys.JOINT_VELOCITIES_KEY))
+        q = self.redis2array(self.get(self.keys.JOINT_ANGLES_KEY))
+        dq = self.redis2array(self.get(self.keys.JOINT_VELOCITIES_KEY))
         tau = self.redis2array(self.get(
-            self._keys.JOINT_TORQUES_COMMANDED_KEY))
-        contact = self.redis2array(self.get(self._keys.SENSED_CONTACT_KEY))
+            self.keys.JOINT_TORQUES_COMMANDED_KEY))
+        contact = self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
 
         return np.append(np.concatenate([q, dq, tau]), contact)
 
@@ -57,24 +57,24 @@ class RedisClient(object):
         return np.array(json.loads(serialized_arr))
 
     def take_action(self, action):
-        self.set(self._keys.ACTION_KEY, self.array2redis(action))
-        return self.set(self._keys.START_ACTION_KEY, 1)
+        self.set(self.keys.ACTION_KEY, self.array2redis(action))
+        return self.set(self.keys.START_ACTION_KEY, 1)
 
     def set_action_space(self, robot_action):
-        self._action_space = robot_action.action_space
-        self._action_space_size = robot_action.action_space_size().shape
-        self._reset_action = -1 * np.ones((self._action_space_size))
-        print(self._reset_action)
-        return self.set(self._keys.ACTION_SPACE_KEY, self._action_space.value)
+        self._action_space = robot_action.action_space_enum
+        #TODO this will send the wrong action size right now
+        self._action_space_size = robot_action.action_space_size()
+        self._reset_action = robot_action.reset_action()
+        return self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
     def array2redis(self, arr: np.array) -> str:
         return json.dumps(arr.tolist())
 
     def robot_is_reset(self) -> bool:
-        return int(self.get(self._keys.ROBOT_IS_RESET_KEY).decode()) == 1
+        return int(self.get(self.keys.ROBOT_IS_RESET_KEY).decode()) == 1
 
     def action_complete(self) -> bool:
-        return int(self.get(self._keys.ACTION_COMPLETE_KEY).decode()) == 1
+        return int(self.get(self.keys.ACTION_COMPLETE_KEY).decode()) == 1
 
     def reset_robot(self) -> bool:
         self.take_action(self._reset_action)
@@ -96,8 +96,8 @@ class RedisClient(object):
         return True
 
     def env_hard_reset(self) -> bool:
-        self.set(self._keys.HARD_RESET_CONTROLLER_KEY, 1)
-        self.set(self._keys.HARD_RESET_SIMULATOR_KEY, 1)
+        self.set(self.keys.HARD_RESET_CONTROLLER_KEY, 1)
+        self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
 
         controller_reset = False
         simulator_reset = False
@@ -105,9 +105,9 @@ class RedisClient(object):
         print("[INFO] Waiting for the simulator and controller to reset")
         while controller_reset and simulator_reset:
             controller_reset = int(
-                self.get(self._keys.HARD_RESET_CONTROLLER_KEY).decode()) == 0
+                self.get(self.keys.HARD_RESET_CONTROLLER_KEY).decode()) == 0
             simulator_reset = int(
-                self.get(self._keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0
+                self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0
 
             time.sleep(0.1)
             #if we have to wait for more than a minute something went wrong
@@ -120,7 +120,7 @@ class RedisClient(object):
 
         #send the reset action again such that the controller knows the current action space
         self.take_action(self._reset_action)
-        self.set(self._keys.ACTION_SPACE_KEY, self._action_space.value)
+        self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
         return True
 
     def get(self, key):
