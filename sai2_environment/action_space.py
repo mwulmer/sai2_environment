@@ -158,7 +158,6 @@ class TaskSpaceAction(RobotAction):
             idx = np.nonzero(np.asarray(self.rotation_axis))
             rot[idx] = vec
             quat = self.rotvec_to_quaternion(rot)
-            print(quat)
 
         return np.concatenate((x, quat, kp))
 

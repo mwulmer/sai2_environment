@@ -11,11 +11,12 @@ def main():
     action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
 
     env = RobotEnv(name='move_object_to_target',
+                   simulation=True,
                    action_space=action_space,
                    isotropic_gains=True,
                    render=True,
                    blocking_action=True,
-                   rotation_axis=(0,0,1))
+                   rotation_axis=(0, 0, 1))
 
     obs, reward, done, info = env.reset()
 

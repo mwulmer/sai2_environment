@@ -65,7 +65,6 @@ class RedisClient(object):
         #TODO this will send the wrong action size right now
         self._action_space_size = robot_action.action_space_size()
         self._reset_action = robot_action.reset_action()
-        print(self._reset_action)
         return self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
     def array2redis(self, arr: np.array) -> str:
