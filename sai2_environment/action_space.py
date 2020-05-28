@@ -11,175 +11,204 @@ class ActionSpace(Enum):
     Digits Notation:
     | Space | Abs/Delta | Dyn decoup/ impedance |
     """
-    #anisotropic: joints (7) Kp/stiffness (7) 
-    #isotropic: joints (7) Kp/stiffness (1) 
+    #anisotropic: joints (7) Kp/stiffness (7)
+    #isotropic: joints (7) Kp/stiffness (1)
     ABS_JOINT_POSITION_DYN_DECOUP = 111
     DELTA_JOINT_POSITION_DYN_DECOUP = 121
-    ABS_JOINT_POSITION_IMPEDANCE =  112
+    ABS_JOINT_POSITION_IMPEDANCE = 112
     DELTA_JOINT_POSITION_IMPEDANCE = 122
 
     #joints (7)
-    ABS_JOINT_TORQUE = 110    
+    ABS_JOINT_TORQUE = 110
     DELTA_JOINT_TORQUE = 120
 
     #anisotropic: position (3) rotation (4) Kp/stiffness: translational (3) rotational (3)
     #isotropic: position (3) rotation (4) Kp/stiffness: translational (1) rotational (1)
     ABS_EE_POSE_DYN_DECOUP = 211
-    DELTA_EE_POSE_DYN_DECOUP = 221 
-    ABS_EE_POSE_IMPEDANCE = 212 
-    DELTA_EE_POSE_IMPEDANCE = 222 
+    DELTA_EE_POSE_DYN_DECOUP = 221
+    ABS_EE_POSE_IMPEDANCE = 212
+    DELTA_EE_POSE_IMPEDANCE = 222
+
+
+def get_robot_action(action_space_enum, isotropic_gains, rotation_axis):
+    if action_space_enum.value // 10**2 % 10 == 1:
+        return JointSpaceAction(action_space_enum)
+    else:
+        return TaskSpaceAction(action_space_enum,
+                               isotropic_gains=isotropic_gains,
+                               rotation_axis=rotation_axis)
 
 class RobotAction(object):
-    def __init__(self, action_space_enum, isotropic_gains=True):
+    def __init__(self, action_space_enum):
         self.action_space_enum = action_space_enum
-        self.isotropic_gains = isotropic_gains
 
     def decode_action_space(self, action_space):
         i = action_space.value
         return i // 10**2 % 10, i // 10**1 % 10, i // 10**0 % 10
 
     def action_space_size(self):
-        raise NotImplementedError()    
+        raise NotImplementedError()
+
+    def reset_action(self):
+        raise NotImplementedError()
 
     def build_full_command(self, action):
         raise NotImplementedError()
 
-class JointSpaceAction(RobotAction):
-    def __init__(self, action_space_enum, isotropic_gains=True):
-        super().__init__(action_space_enum, isotropic_gains=isotropic_gains)
-        self.space_type, self.value_type, self.controller_type = self.decode_action_space(self.action_space_enum)
 
-        #action space is pure torques
-        if self.controller_type == 0:
-            self.action_space = Box(low=np.zeros((7, )), high=self._max_joint_torques, dtype=np.float32)
-
-
-
-
-
-class RobotAction(object):
-    def __init__(self, action_space=None, isotropic_gains=True, rotation_axis=(True, True, True)):
-        self.action_space = action_space
-        #decode the number for later use
-        self.space_type, self.value_type, self.controller_type = self.decode_action_space(self.action_space)
+class TaskSpaceAction(RobotAction):
+    def __init__(self,
+                 action_space_enum,
+                 isotropic_gains=False,
+                 rotation_axis=(True, True, True)):
+        super().__init__(action_space_enum)
         self.isotropic_gains = isotropic_gains
         self.rotation_axis = rotation_axis
-        
-        # TODO will need to refine these min and max values
-        # https://frankaemika.github.io/docs/control_parameters.html
-        self._min_joint_position = np.array([-2.7, -1.6, -2.7, -3.0, -2.7, 0.2, -2.7])
-        self._max_joint_position = np.array([2.7, 1.6, 2.7, -0.2, 2.7, 3.6, 2.7])
-        self._min_joint_position_delta = np.full((7, ), -0.1)
-        self._max_joint_position_delta = -1 * self._min_joint_position_delta
+        self.space_type, self.value_type, self.control_type = self.decode_action_space(
+            self.action_space_enum)
 
-        self._max_joint_torques = np.array([85, 85, 85, 85, 10, 10, 10])
-        self._max_joint_velocity = np.array([2.0, 2.0, 2.0, 2.0, 2.5, 2.5, 2.5])
-        # TODO cartesian min max? not a box though
+        #either generate full quaternion or rotate around the specified axis
+        self.pose_dim = 7 if sum(
+            rotation_axis) == 3 else 7 - 4 + sum(rotation_axis)
+        rot_dim = self.pose_dim - 3
 
-        max_kp = 250
-        max_stiffness = 250
-        #determine the dimension of the gain vector
-        if self.space_type == 1:
-            #one value per join
-            #isotropic gains probably dont make a lot of sense here
-            self.gains_dim = 1 if isotropic_gains else 7
-        else:
-            #one value for each direction translational and rotational            
-            self.gains_dim = 2 if isotropic_gains else 6
+        if self.value_type == 1:  #absolute position
+            x_min = np.array([0.1, -0.45, 0.0])
+            x_max = np.array([0.65, 0.45, 0.5])
 
-        #TODO min gains cant be 0 
-        self._min_kp = np.zeros((self.gains_dim, ))
-        self._max_kp = np.full((self.gains_dim, ), max_kp)
-        self._min_kp_delta = -1 * self._max_kp / 100
-        self._max_kp_delta = -1 * self._min_kp_delta
+            R_min = np.zeros((rot_dim, ))
+            R_max = np.ones((rot_dim, ))
 
-        self._min_stiffness = np.zeros((self.gains_dim, ))
-        self._max_stiffness = np.full((self.gains_dim, ), max_stiffness)
-        self._min_stiffness_delta = -1 * self._max_stiffness / 100
-        self._max_stiffness_delta = -1 * self._min_stiffness_delta
+            if self.control_type == 1:  #dynamic decoupling
+                #TODO validate these values
+                kp_min = np.array([
+                    0, 5
+                ]) if self.isotropic_gains else np.array([0, 0, 0, 5, 5, 5])
+                kp_max = np.array([500, 10
+                                   ]) if self.isotropic_gains else np.array(
+                                       [500, 500, 500, 10, 10, 10])
 
-        pose_dim = 7 if sum(rotation_axis) == 3 else 7 - 4 + sum(rotation_axis)
+            else:  #impedance
+                #first value is translational stiffness(0-500), second rotational (5-10)
+                kp_min = np.array([
+                    0, 5
+                ]) if self.isotropic_gains else np.array([0, 0, 0, 5, 5, 5])
+                kp_max = np.array([500, 10
+                                   ]) if self.isotropic_gains else np.array(
+                                       [500, 500, 500, 10, 10, 10])
 
-        self.dimensions = {
-            ActionSpace.NONE:
-            None,
-            ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP:
-            Box(low=np.concatenate((self._min_joint_position, self._min_kp)),
-                high=np.concatenate((self._max_joint_position, self._max_kp)),
-                dtype=np.float32),
-            ActionSpace.DELTA_JOINT_POSITION_DYN_DECOUP:
-            Box(low=np.concatenate((self._min_joint_position_delta, self._min_kp_delta)),
-                high=np.concatenate((self._max_joint_position_delta, self._max_kp_delta)),
-                dtype=np.float32),
-            ActionSpace.ABS_JOINT_POSITION_IMPEDANCE:
-            Box(low=np.concatenate((self._min_joint_position, self._min_stiffness)),
-                high=np.concatenate((self._max_joint_position, self._max_stiffness)),
-                dtype=np.float32),
-            ActionSpace.DELTA_JOINT_POSITION_IMPEDANCE:
-            Box(low=np.concatenate((self._min_joint_position_delta, self._min_stiffness_delta)),
-                high=np.concatenate((self._max_joint_position_delta, self._max_stiffness_delta)),
-                dtype=np.float32),
-            ActionSpace.ABS_JOINT_TORQUE:
-            Box(low=np.zeros((7, )),
-                high=self._max_joint_torques,
-                dtype=np.float32),
-            ActionSpace.DELTA_JOINT_TORQUE:
-            Box(low=-0.1 * np.ones((7, )),
-                high=0.1 * np.zeros((7, )),
-                dtype=np.float32),
-            ActionSpace.ABS_EE_POSE_DYN_DECOUP:
-            Box(low=np.concatenate((np.full((pose_dim, ), -np.inf), self._min_kp)),
-                high=np.concatenate((np.full((pose_dim, ), -np.inf), self._max_kp)),
-                dtype=np.float32),
-            ActionSpace.DELTA_EE_POSE_DYN_DECOUP:
-            Box(low=np.concatenate((np.full((pose_dim, ), -np.inf), self._min_kp_delta)),
-                high=np.concatenate((np.full((pose_dim, ), -np.inf), self._max_kp_delta)),
-                dtype=np.float32),
-            ActionSpace.ABS_EE_POSE_IMPEDANCE:
-            Box(low=np.concatenate((np.full((pose_dim, ), -np.inf), self._min_stiffness)),
-                high=np.concatenate((np.full((pose_dim, ), -np.inf), self._max_stiffness)),
-                dtype=np.float32),
-            ActionSpace.DELTA_EE_POSE_IMPEDANCE:
-            Box(low=np.concatenate((np.full((pose_dim, ), -0.1), np.full(self.gains_dim,400))),#self._min_stiffness_delta)),
-                high=np.concatenate((np.full((pose_dim, ), 0.1), np.full(self.gains_dim,500))),#self._max_stiffness_delta)),
-                dtype=np.float32),
-        }
+        else:  #delta position
+            x_min = np.array([-0.1, -0.1, -0.1])
+            x_max = -1 * x_min
 
-    def action_space_size(self):
-        return self.dimensions[self.action_space]
+            R_min = -0.1 * np.ones((rot_dim, ))
+            R_max = -1 * R_min
 
-    def decode_action_space(self, action_space):
-        i = action_space.value
-        return i // 10**2 % 10, i // 10**1 % 10, i // 10**0 % 10
+            if self.control_type == 1:  #dynamic decoupling
+                kp_min = np.array([-10, -1
+                                   ]) if self.isotropic_gains else np.array(
+                                       [-10, -10, -10, -1, -1, -1])
+                kp_max = np.array([
+                    10, 1
+                ]) if self.isotropic_gains else np.array([10, 10, 10, 1, 1, 1])
+            else:  #impedance
+                kp_min = np.array([-10, -1
+                                   ]) if self.isotropic_gains else np.array(
+                                       [-10, -10, -10, -1, -1, -1])
+                kp_max = np.array([
+                    10, 1
+                ]) if self.isotropic_gains else np.array([10, 10, 10, 1, 1, 1])
+        low = np.concatenate((x_min, R_min, kp_min))
+        high = np.concatenate((x_max, R_max, kp_max))
+        self.action_space = Box(low=low, high=high)
 
     def rotvec_to_quaternion(self, vec):
-        quat = Rot.from_euler('zyx', vec).as_quat()
+        quat = Rot.from_euler('xyz', vec).as_quat()
         #[w, x, y, z]
-        idx = [3, 0, 1, 2] 
-        return quat[idx] 
+        idx = [3, 0, 1, 2]
+        return quat[idx]
+
+    def action_space_size(self):
+        return self.action_space.shape
+
+    def reset_action(self):
+        return -1 * np.ones((13, ))
 
     def build_full_command(self, action):
-        #this is needed if we use isotropic gains or limit the rotation of the EE
-        #if directly we send torques, or the policy generates the full command (-> no isotropic gains and full quaternion rotation)
+        #depending on isotropic gains and/or the rotational axis we have to build the full command
+        x = np.zeros(3)
+        quat = np.zeros(4)
+        kp = np.zeros(6)
 
-        if self.controller_type == 0 or (not self.isotropic_gains and sum(self.rotation_axis)==3):
-            return action
-        
-        #if we use isotropic gains with a joint space
-        if self.space_type == 1 and self.isotropic_gains:
-            q = action[:7]
-            kp = np.full((7, ), action[7])
-            return np.concatenate((q,kp))
+        if self.isotropic_gains:
+            kp_translation = action[-2] * np.ones(3)
+            kp_rotation = action[-1] * np.ones(3)
+            kp = np.concatenate((kp_translation, kp_rotation))
+        else:
+            kp = action[-6:]
 
-        #build the quationions if we dont have full rotation
-        if sum(self.rotation_axis) != 3:
-            rotation_vector = action[3:3+sum(self.rotation_axis)]
-        
+        pose = action[:self.pose_dim]
+        x = pose[:3]
 
-        return None
+        if sum(self.rotation_axis) == 3:
+            quat = pose[3:]
+        else:
+            rot = np.zeros(3)
+            vec = pose[3:]
+            idx = np.nonzero(np.asarray(self.rotation_axis))
+            rot[idx] = vec
+            quat = self.rotvec_to_quaternion(rot)
+            print(quat)
+
+        return np.concatenate((x, quat, kp))
 
 
+class JointSpaceAction(RobotAction):
+    def __init__(self, action_space_enum):
+        super().__init__(action_space_enum)
+        self.space_type, self.value_type, self.control_type = self.decode_action_space(
+            self.action_space_enum)
 
-def action_dimension(space):
-    return None
+        #joint min and max values
+        # https://frankaemika.github.io/docs/control_parameters.html
+        if self.control_type == 0:  #torque controlled
+            q_min = -1 * np.array([85, 85, 85, 85, 10, 10, 10])
+            q_max = np.array([85, 85, 85, 85, 10, 10, 10])
 
+            kp_min = np.array([])
+            kp_max = np.array([])
+
+        elif self.value_type == 1:  #absolute
+            q_min = np.array([-2.7, -1.6, -2.7, -3.0, -2.7, 0.2, -2.7])
+            q_max = np.array([2.7, 1.6, 2.7, -0.2, 2.7, 3.6, 2.7])
+
+            if self.control_type == 1:  #dynamic decoupling
+                kp_min = np.array([0, 0, 0, 0, 0, 0, 0])
+                kp_max = np.array([500, 500, 500, 500, 500, 500, 500])
+
+            else:  #impedance
+                #temporary suggested values from Erfan
+                kp_min = np.array([500, 500, 500, 500, 300, 200, 100])
+                kp_max = np.array([1500, 1500, 1500, 1500, 1000, 500, 300])
+        else:  #delta
+            q_min = np.full((7, ), -0.1)
+            q_max = -1 * q_min
+
+            if self.control_type == 2:  #impedance
+                kp_min = np.array([500, 500, 500, 500, 300, 200, 100])
+                kp_max = np.array([1500, 1500, 1500, 1500, 1000, 500, 300])
+
+        low = np.concatenate((q_min, kp_min))
+        high = np.concatenate((q_max, kp_max))
+
+        self.action_space = Box(low=low, high=high)
+
+    def action_space_size(self):
+        return self.action_space.shape
+
+    def reset_action(self):
+        return -1 * np.ones((14, ))
+
+    def build_full_command(self, action):
+        #since we dont do isotropic gains or rotational axis, we only return the action
+        return action

@@ -61,9 +61,10 @@ class RedisClient(object):
         return self.set(self.keys.START_ACTION_KEY, 1)
 
     def set_action_space(self, robot_action):
-        self._action_space = robot_action.action_space
-        self._action_space_size = robot_action.action_space_size().shape
-        self._reset_action = -1 * np.ones((self._action_space_size))
+        self._action_space = robot_action.action_space_enum
+        #TODO this will send the wrong action size right now
+        self._action_space_size = robot_action.action_space_size()
+        self._reset_action = robot_action.reset_action()
         print(self._reset_action)
         return self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
