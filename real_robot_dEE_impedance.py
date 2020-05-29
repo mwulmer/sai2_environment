@@ -13,7 +13,7 @@ def main():
     env = RobotEnv(name='move_object_to_target',
                    simulation=False,
                    action_space=action_space,
-                   isotropic_gains=True,
+                   isotropic_gains=False,
                    render=True,
                    blocking_action=True,
                    rotation_axis=(0, 0, 1))
@@ -25,23 +25,24 @@ def main():
     # a = np.concatenate([a, quat])
     #0.28673 0.0     0.55571
 
-    a0 = np.array([0.35 - 0.28673, 0.0, 0.45 - 0.55571, 0.5, 500, 10])
+    a0 = np.array([0.1, 0.0, -0.1, 0.5, 1000, 1000, 1000, 15, 15, 15])
     #go down to 5cm above the table
-    a1 = np.array([0.0, 0.0, -0.4, 0.0, 500, 10])
-    #at (0.35, 0.0, 0.05) go to one side of the possible range
-    a2 = np.array([0.0, -0.2, 0.0, 0.0, 500, 10])
-    #at (0.35 -0.2 0.05)
-    a3 = np.array([0.0, -0.2, 0.0, 0.0, 500, 10])
-    #go to 0.55,-0.4,0.05
-    a4 = np.array([0.25, 0.0, 0.0, 0.0, 500, 10])
+    a1 = np.array([0.0, 0.0, -0.3, 0.0, 1000, 1000, 1000, 15, 15, 15])
+    # #at (0.35, 0.0, 0.05) go to one side of the possible range
+    a2 = np.array([0.0, -0.2, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15]])
+    # #at (0.35 -0.2 0.05)
+    a3 = np.array([0.0, -0.2, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15]])
+    # #go to 0.55,-0.4,0.05
+    a4 = np.array([0.25, 0.0, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15]])
 
-    #go to 0.6 0.4 0.05
-    a5 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    a6 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    a7 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    a8 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
+    # #go to 0.6 0.4 0.05
+    # a5 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
+    # a6 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
+    # a7 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
+    # a8 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
 
-    arr = [a0, a1, a2, a3, a4, a5, a6, a7, a8]
+    #arr = [a0, a1, a2, a3, a4, a5, a6, a7, a8]
+    arr = [a0, a1, a2, a3, a4]
 
     for action in arr:
         obs, reward, done, info = env.step(action)

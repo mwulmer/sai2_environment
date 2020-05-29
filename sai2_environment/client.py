@@ -49,7 +49,12 @@ class RedisClient(object):
         dq = self.redis2array(self.get(self.keys.JOINT_VELOCITIES_KEY))
         tau = self.redis2array(self.get(
             self.keys.JOINT_TORQUES_COMMANDED_KEY))
-        contact = self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
+
+        if self._config["simulation"]:
+            contact = self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
+        else:
+            #TODO No force sensor on robot, need to use the sensed torques 
+            contact = np.array([0])
 
         return np.append(np.concatenate([q, dq, tau]), contact)
 
