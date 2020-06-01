@@ -31,8 +31,7 @@ class RobotEnv(object):
             'hostname': hostname,
             'port': 6379,
             'blocking_action': blocking_action,
-            'rotate_only_z': sum(rotation_axis) < 3 and rotation_axis[2]
-            #'rotation_axis': rotation_axis
+            'rotation_axis': rotation_axis
         }
 
         # connect redis client
