@@ -13,41 +13,25 @@ def main():
     env = RobotEnv(name='move_object_to_target',
                    simulation=False,
                    action_space=action_space,
-                   isotropic_gains=False,
+                   isotropic_gains=True,
                    render=True,
                    blocking_action=True,
-                   rotation_axis=(0, 0, 1))
+                   rotation_axis=(0, 0, 1))    
 
-    obs, reward, done, info = env.reset()
+    episodes = 50
+    steps = 100
 
-    # a = np.array([0.2, -0.42, 0.15])
-    # quat = env.rotvec_to_quaternion(np.array([np.pi*0.25, 0,0]))
-    # a = np.concatenate([a, quat])
-    #0.28673 0.0     0.55571
+    for episode in range(episodes):
+        obs, reward, done, info = env.reset()
+        for step in range(steps):
+            position = np.random.uniform(low=-0.1, high=0.1, size=(3,))
+            rotation = np.random.uniform(low=-0.2, high=0.2, size=(1,))
+            stiffness_linear = np.random.uniform(low=-50, high=50, size=(1,))
+            stiffness_rot = np.random.uniform(low=-2, high=2, size=(1,))
+            action = np.concatenate((position,rotation,stiffness_linear,stiffness_rot))
 
-    a0 = np.array([0.1, 0.0, -0.1, 0.5, 1000, 1000, 1000, 15, 15, 15])
-    #go down to 5cm above the table
-    a1 = np.array([0.0, 0.0, -0.3, 0.0, 1000, 1000, 1000, 15, 15, 15])
-    # #at (0.35, 0.0, 0.05) go to one side of the possible range
-    a2 = np.array([0.0, -0.2, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15])
-    # #at (0.35 -0.2 0.05)
-    a3 = np.array([0.0, -0.2, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15])
-    # #go to 0.55,-0.4,0.05
-    a4 = np.array([0.25, 0.0, 0.0, 0.0, 1000, 1000, 1000, 15, 15, 15])
+            obs, reward, done, info = env.step(action)
 
-    # #go to 0.6 0.4 0.05
-    # a5 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    # a6 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    # a7 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-    # a8 = np.array([0.0, 0.2, 0.0, 0.1, 500, 10])
-
-    #arr = [a0, a1, a2, a3, a4, a5, a6, a7, a8]
-    arr = [a0, a1, a2, a3, a4]
-
-    for action in arr:
-        obs, reward, done, info = env.step(action)
-
-    #env.reset()
 
 
 if __name__ == "__main__":
