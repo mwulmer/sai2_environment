@@ -1,12 +1,16 @@
+import time
+import threading
+
+import cv2
 import numpy as np
+import pyrealsense2 as rs
 from gym import spaces
+from ipdb import set_trace
+from scipy.spatial.transform import Rotation as Rot
+
 from sai2_environment.client import RedisClient
 from sai2_environment.action_space import *
-import time
 from sai2_environment.utils import name_to_task_class
-from ipdb import set_trace
-
-from scipy.spatial.transform import Rotation as Rot
 
 
 class RobotEnv(object):
@@ -55,6 +59,12 @@ class RobotEnv(object):
             "center": (3, 128, 128)
         }
         self.action_space = self._robot_action.action_space_size()
+        self.pipeline = rs.pipeline()
+        self.color_frame = None
+        self.depth_frame = None
+
+        self.background = threading.Thread(name="background", target= self.get_frames)
+        self.background.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -76,6 +86,19 @@ class RobotEnv(object):
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)
+
+    def get_frames(self):
+        self.pipeline.start()
+        align_to = rs.stream.color
+        align = rs.align(align_to)
+        while True:
+            frames = self.pipeline.wait_for_frames()
+            aligned_frames = align.process(frames)
+            depth_frame = aligned_frames.get_depth_frame()
+            self.depth_frame = np.asanyarray(depth_frame.get_data())
+            color_frame = aligned_frames.get_color_frame()
+            color_frame = np.asanyarray(color_frame.get_data())
+            self.color_frame = cv2.resize(color_frame, self.env_config['camera_resolution'])
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -135,6 +158,6 @@ class RobotEnv(object):
             camera_frame = self.convert_image(self._client.get_camera_frame())
             robot_state = self._client.get_robot_state()
         else:
-            camera_frame = 0
-            robot_state = 0
+            camera_frame = self.convert_image(self.color_frame)
+            robot_state = self._client.get_robot_state()
         return camera_frame, robot_state

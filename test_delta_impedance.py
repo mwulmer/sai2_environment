@@ -4,6 +4,7 @@ from sai2_environment.action_space import ActionSpace
 
 import numpy as np
 import time
+from ipdb import set_trace
 
 
 def main():
@@ -11,7 +12,7 @@ def main():
     action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=False,
+                   simulation=True,
                    action_space=action_space,
                    isotropic_gains=True,
                    render=True,
