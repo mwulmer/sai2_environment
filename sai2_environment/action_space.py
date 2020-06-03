@@ -154,7 +154,7 @@ class TaskSpaceAction(RobotAction):
             quat = pose[3:]
         else:
             rot = np.zeros(3)
-            vec = pose[3:]
+            vec = np.pi*pose[3:]
             idx = np.nonzero(np.asarray(self.rotation_axis))
             rot[idx] = vec
             quat = self.rotvec_to_quaternion(rot)
