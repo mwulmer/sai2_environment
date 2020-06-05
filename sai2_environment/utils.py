@@ -2,7 +2,7 @@
 Adopted from https://github.com/stepjam/RLBench/blob/master/rlbench/utils.py
 """
 import importlib
-
+from ipdb import set_trace
 
 class InvalidTaskName(Exception):
     pass
@@ -11,6 +11,7 @@ def name_to_task_class(task_file: str):
     name = task_file.replace('.py', '')
     class_name = ''.join([w[0].upper() + w[1:] for w in name.split('_')])
     try:
+        set_trace()
         mod = importlib.import_module("sai2_environment.tasks.%s" % name)
         mod = importlib.reload(mod)
     except ModuleNotFoundError as e:

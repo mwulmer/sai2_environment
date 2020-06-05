@@ -58,13 +58,14 @@ class RobotEnv(object):
             "state": self._client.get_robot_state().shape,
             "center": (3, 128, 128)
         }
-        self.action_space = self._robot_action.action_space_size()
+        self.action_space = self._robot_action.action_space
         self.pipeline = rs.pipeline()
         self.color_frame = None
         self.depth_frame = None
 
         self.background = threading.Thread(name="background", target= self.get_frames)
-        self.background.start()
+        if not self.env_config["simulation"]:
+            self.background.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -82,7 +83,7 @@ class RobotEnv(object):
         print("--------------------------------S-----")
         print("[INFO] Robot state is reset")
         self._reset_counter += 1
-        return self._get_obs(), 0, False, None
+        return self._get_obs()
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)
