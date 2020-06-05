@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='sai2_environment',
@@ -8,6 +8,6 @@ setup(
     author='Elie Aljalbout',
     author_email='elie.aljalbout@tum.de',
     license='unlicense',
-    packages=['sai2_environment'],
+    packages=find_packages(),
     zip_safe=False
 )
