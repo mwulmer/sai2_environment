@@ -24,6 +24,7 @@ class RobotEnv(object):
                  action_space=ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP,
                  isotropic_gains=True,
                  blocking_action=False,
+                 blocking_time=2.0,
                  rotation_axis=(True, True, True)):
 
         # connect to redis server
@@ -44,6 +45,7 @@ class RobotEnv(object):
 
         #TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
+        self.blocking_time = blocking_time
         self.task = task_class('tmp', self._client, simulation=simulation)
 
         # set action space to redis
@@ -122,13 +124,14 @@ class RobotEnv(object):
             # first check if there is still something going on on the robot
             # print("Waiting for robot: {}".format(
             #self._client.action_complete()))
-            while not self._client.action_complete():
-                time.sleep(0.01)
             self.take_action(action)
             time.sleep(0.01)
+            t0 = time.time()
 
             while not self._client.action_complete():
                 time.sleep(0.01)
+                if time.time()-t0 > self.blocking_time:
+                    break
 
             reward, done = self._compute_reward()
 
