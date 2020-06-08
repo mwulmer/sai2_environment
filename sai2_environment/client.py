@@ -102,30 +102,45 @@ class RedisClient(object):
 
     def env_hard_reset(self) -> bool:
         self.set(self.keys.HARD_RESET_CONTROLLER_KEY, 1)
-        self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
-
         controller_reset = False
         simulator_reset = False
         waited_time = 0
         print("[INFO] Waiting for the simulator and controller to reset")
-        while controller_reset and simulator_reset:
+        #first reset the controller
+        while controller_reset is False:
+            time.sleep(0.1)
             controller_reset = int(
                 self.get(self.keys.HARD_RESET_CONTROLLER_KEY).decode()) == 0
-            simulator_reset = int(
-                self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0
-
-            time.sleep(0.1)
+            
             #if we have to wait for more than a minute something went wrong
             waited_time += 0.1
             if waited_time > 60:
                 sys.exit(0)
                 return False
+
+        #then we reset the simulation
+        self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
+        waited_time = 0
+        while simulator_reset is False:
+            time.sleep(0.1)
+            simulator_reset = int(
+                self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0
+
+            #if we have to wait for more than a minute something went wrong
+            waited_time += 0.1
+            if waited_time > 60:
+                sys.exit(0)
+                return False
+
         #TODO move this to logging
         print("[INFO] Successfully reset simulator and controller!")
 
         #send the reset action again such that the controller knows the current action space
-        self.take_action(self._reset_action)
+        #self.take_action(self._reset_action)
         self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
+
+        #testing if the bug is just a synch issue
+        time.sleep(2)
         return True
 
     def get(self, key):
