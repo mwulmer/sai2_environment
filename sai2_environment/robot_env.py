@@ -24,6 +24,7 @@ class RobotEnv(object):
                  action_space=ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP,
                  isotropic_gains=True,
                  blocking_action=False,
+                 blocking_time=2.0,
                  rotation_axis=(True, True, True)):
 
         # connect to redis server
@@ -44,6 +45,7 @@ class RobotEnv(object):
 
         #TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
+        self.blocking_time = blocking_time
         self.task = task_class('tmp', self._client, simulation=simulation)
 
         # set action space to redis
@@ -58,13 +60,14 @@ class RobotEnv(object):
             "state": self._client.get_robot_state().shape,
             "center": (3, 128, 128)
         }
-        self.action_space = self._robot_action.action_space_size()
+        self.action_space = self._robot_action.action_space
         self.pipeline = rs.pipeline()
         self.color_frame = None
         self.depth_frame = None
 
         self.background = threading.Thread(name="background", target= self.get_frames)
-        self.background.start()
+        if not self.env_config["simulation"]:
+            self.background.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -80,7 +83,7 @@ class RobotEnv(object):
             self._client.env_hard_reset()        
         print("--------------------------------------")
         self._reset_counter += 1
-        return self._get_obs(), 0, False, None
+        return self._get_obs()
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)
@@ -119,18 +122,15 @@ class RobotEnv(object):
             # first check if there is still something going on on the robot
             # print("Waiting for robot: {}".format(
             #self._client.action_complete()))
-            while not self._client.action_complete():
-                time.sleep(0.01)
             self.take_action(action)
             time.sleep(0.01)
+            t0 = time.time()
 
             waited_time = 0
             while not self._client.action_complete():
                 time.sleep(0.01)
-                waited_time += 0.1
-                if waited_time > 5:
-                    continue
-                
+                if time.time()-t0 > self.blocking_time:
+                    break
 
             reward, done = self._compute_reward()
 

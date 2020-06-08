@@ -2,7 +2,7 @@
 Adopted from https://github.com/stepjam/RLBench/blob/master/rlbench/utils.py
 """
 import importlib
-
+from ipdb import set_trace
 
 class InvalidTaskName(Exception):
     pass

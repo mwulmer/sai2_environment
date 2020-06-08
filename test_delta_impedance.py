@@ -19,7 +19,7 @@ def main():
                    blocking_action=True,
                    rotation_axis=(0, 0, 1))
 
-    obs, reward, done, info = env.reset()
+    obs = env.reset()
 
     # a = np.array([0.2, -0.42, 0.15])
     # quat = env.rotvec_to_quaternion(np.array([np.pi*0.25, 0,0]))
