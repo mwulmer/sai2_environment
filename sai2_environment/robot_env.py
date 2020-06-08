@@ -67,10 +67,8 @@ class RobotEnv(object):
             self._client.reset_robot()
         else:
             # if in simulation, hard reset both simulator and controller
-            self._client.env_hard_reset()
-
-        print("--------------------------------S-----")
-        print("[INFO] Robot state is reset")
+            self._client.env_hard_reset()        
+        print("--------------------------------------")
         self._reset_counter += 1
         return self._get_obs(), 0, False, None
 
@@ -103,8 +101,13 @@ class RobotEnv(object):
             self.take_action(action)
             time.sleep(0.01)
 
+            waited_time = 0
             while not self._client.action_complete():
                 time.sleep(0.01)
+                waited_time += 0.1
+                if waited_time > 5:
+                    continue
+                
 
             reward, done = self._compute_reward()
 
