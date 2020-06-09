@@ -7,10 +7,12 @@ import pyrealsense2 as rs
 from gym import spaces
 from ipdb import set_trace
 from scipy.spatial.transform import Rotation as Rot
+from sklearn.preprocessing import MinMaxScaler
 
 from sai2_environment.client import RedisClient
 from sai2_environment.action_space import *
 from sai2_environment.utils import name_to_task_class
+from sai2_environment.ranges import Range
 
 
 class RobotEnv(object):
@@ -65,6 +67,10 @@ class RobotEnv(object):
         self.color_frame = None
         self.depth_frame = None
 
+        self.scaler = MinMaxScaler()
+        self.scaler.data_min_ = np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"]))
+        self.scaler.data_max_ = np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))
+
         self.background = threading.Thread(name="background", target= self.get_frames)
         if not self.env_config["simulation"]:
             self.background.start()
@@ -86,7 +92,10 @@ class RobotEnv(object):
         return self._get_obs()
 
     def convert_image(self, im):
-        return np.rollaxis(im, axis=2, start=0)
+        return np.rollaxis(im, axis=2, start=0)/255.0
+
+    def get_normalized_robot_state(self):
+        return self.scaler.transform(self._client.get_robot_state())
 
     def get_frames(self):
         self.pipeline.start()
@@ -159,8 +168,8 @@ class RobotEnv(object):
     def _get_obs(self):
         if self.env_config['simulation']:
             camera_frame = self.convert_image(self._client.get_camera_frame())
-            robot_state = self._client.get_robot_state()
+            robot_state = self.get_normalized_robot_state()
         else:
             camera_frame = self.convert_image(self.color_frame)
-            robot_state = self._client.get_robot_state()
+            robot_state = self.get_normalized_robot_state()
         return camera_frame, robot_state
