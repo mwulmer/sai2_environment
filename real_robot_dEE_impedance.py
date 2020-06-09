@@ -26,7 +26,7 @@ def main():
     for episode in range(episodes):
         
         print("Episode: {}; Elapsed Time: {} minutes".format(episode, round((time.time()-start_time)/60), 4))
-        obs, reward, done, info = env.reset()
+        obs = env.reset()
         for step in range(steps):
             position = np.around(np.random.uniform(low=-0.15, high=0.15, size=(3,)), 2)
             rotation = np.around(np.random.uniform(low=0.1, high=0.1, size=(1,)), 2)
@@ -35,7 +35,6 @@ def main():
             action = np.concatenate((position,rotation,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
-            time.sleep(0.1)
 
 
 
