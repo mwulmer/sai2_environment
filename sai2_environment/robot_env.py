@@ -68,8 +68,8 @@ class RobotEnv(object):
         self.depth_frame = None
 
         self.scaler = MinMaxScaler()
-        self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"])), 
-                         np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))])
+        self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
+                         np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
 
         set_trace()
 
