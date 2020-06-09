@@ -71,7 +71,6 @@ class RobotEnv(object):
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
                          np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
 
-        set_trace()
 
         self.background = threading.Thread(name="background", target= self.get_frames)
         if not self.env_config["simulation"]:
@@ -97,6 +96,7 @@ class RobotEnv(object):
         return np.rollaxis(im, axis=2, start=0)/255.0
 
     def get_normalized_robot_state(self):
+        set_trace()
         return self.scaler.transform(self._client.get_robot_state())
 
     def get_frames(self):
