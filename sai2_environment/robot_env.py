@@ -96,6 +96,7 @@ class RobotEnv(object):
         return np.rollaxis(im, axis=2, start=0)/255.0
 
     def get_normalized_robot_state(self):
+        set_trace()
         return self.scaler.transform([self._client.get_robot_state()])[0]
 
     def get_frames(self):
