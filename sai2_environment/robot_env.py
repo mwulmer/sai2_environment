@@ -71,6 +71,8 @@ class RobotEnv(object):
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"])), 
                          np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))])
 
+        set_trace()
+
         self.background = threading.Thread(name="background", target= self.get_frames)
         if not self.env_config["simulation"]:
             self.background.start()
