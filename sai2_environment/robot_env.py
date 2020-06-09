@@ -68,8 +68,8 @@ class RobotEnv(object):
         self.depth_frame = None
 
         self.scaler = MinMaxScaler()
-        self.scaler.data_min_ = np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"]))
-        self.scaler.data_max_ = np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))
+        self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"])), 
+                         np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"])))
 
         self.background = threading.Thread(name="background", target= self.get_frames)
         if not self.env_config["simulation"]:
