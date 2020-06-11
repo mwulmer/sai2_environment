@@ -77,6 +77,7 @@ class RobotEnv(object):
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
         if not self.env_config["simulation"]:
             self.camera_thread.start()
+            self.contact_thread.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -98,7 +99,10 @@ class RobotEnv(object):
         return np.rollaxis(im, axis=2, start=0)/255.0
 
     def get_normalized_robot_state(self):
-        return self.scaler.transform([self._client.get_robot_state()])[0]
+        robot_state = self.scaler.transform([self._client.get_robot_state()])[0]
+        if not self.env_config['simulation']:
+            robot_state[-1] = self.contact_event
+        return robot_state
 
     def get_frames(self):
         self.pipeline.start()
@@ -116,6 +120,7 @@ class RobotEnv(object):
     def get_contact(self):
         while True:
             self.contact_event = True if self._client.get_contact_occurence() else self.contact_event
+            print("contact" if self._client.get_contact_occurence() else "no contact")
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -157,8 +162,10 @@ class RobotEnv(object):
 
         #print("Reward: {}".format(reward))
         info = None
+        obs = self._get_obs() # has to be before the contact reset \!/
+        print("end of episode, contact happened = "self.contact_event)
         self.contact_event = False
-        return self._get_obs(), reward, done, info
+        return obs, reward, done, info
 
     def take_action(self, action):
         return self._client.take_action(action)
