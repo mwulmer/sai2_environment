@@ -163,7 +163,7 @@ class RobotEnv(object):
         #print("Reward: {}".format(reward))
         info = None
         obs = self._get_obs() # has to be before the contact reset \!/
-        print("end of episode, contact happened = "self.contact_event)
+        print("end of episode, contact happened = ", self.contact_event)
         self.contact_event = False
         return obs, reward, done, info
 
