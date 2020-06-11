@@ -69,8 +69,9 @@ class RobotEnv(object):
         self.contact_event = False
 
         self.scaler = MinMaxScaler()
-        self.scaler.data_min_ = np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"]))
-        self.scaler.data_max_ = np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))
+        self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
+                         np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
+
 
         self.camera_thread = threading.Thread(name="camera_thread", target= self.get_frames)
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
@@ -97,7 +98,7 @@ class RobotEnv(object):
         return np.rollaxis(im, axis=2, start=0)/255.0
 
     def get_normalized_robot_state(self):
-        return self.scaler.transform(self._client.get_robot_state())
+        return self.scaler.transform([self._client.get_robot_state()])[0]
 
     def get_frames(self):
         self.pipeline.start()
