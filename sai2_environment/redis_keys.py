@@ -24,6 +24,7 @@ class RedisKeys(object):
             self.JOINT_TORQUES_COMMANDED_KEY = "sai2::FrankaPanda::actuators::fgc"
             self.JOINT_ANGLES_KEY  = "sai2::FrankaPanda::sensors::q"
             self.JOINT_VELOCITIES_KEY = "sai2::FrankaPanda::sensors::dq"
+            self.SENSED_CONTACT_KEY = "sai2::FrankaPanda::sensors::model::contact"
             self.MASSMATRIX_KEY = "sai2::FrankaPanda::sensors::model::massmatrix"
             self.CORIOLIS_KEY = "sai2::FrankaPanda::sensors::model::coriolis"
             self.ROBOT_GRAVITY_KEY = "sai2::FrankaPanda::sensors::model::robot_gravity"

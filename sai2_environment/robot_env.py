@@ -66,14 +66,16 @@ class RobotEnv(object):
         self.pipeline = rs.pipeline()
         self.color_frame = None
         self.depth_frame = None
+        self.contact_event = False
 
         self.scaler = MinMaxScaler()
         self.scaler.data_min_ = np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"]))
         self.scaler.data_max_ = np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"]))
 
-        self.background = threading.Thread(name="background", target= self.get_frames)
+        self.camera_thread = threading.Thread(name="camera_thread", target= self.get_frames)
+        self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
         if not self.env_config["simulation"]:
-            self.background.start()
+            self.camera_thread.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -109,6 +111,10 @@ class RobotEnv(object):
             color_frame = aligned_frames.get_color_frame()
             color_frame = np.asanyarray(color_frame.get_data())
             self.color_frame = cv2.resize(color_frame, self.env_config['camera_resolution'])
+
+    def get_contact(self):
+        while True:
+            self.contact_event = True if self._client.get_contact_occurence() else self.contact_event
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -150,6 +156,7 @@ class RobotEnv(object):
 
         #print("Reward: {}".format(reward))
         info = None
+        self.contact_event = False
         return self._get_obs(), reward, done, info
 
     def take_action(self, action):

@@ -44,6 +44,9 @@ class RedisClient(object):
         frame = np.flip((np.dstack((r, g, b))).astype(np.uint8), 0)
         return frame
 
+    def get_contact_occurence(self):
+        return self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
+
     def get_robot_state(self) -> np.array:
         q = self.redis2array(self.get(self.keys.JOINT_ANGLES_KEY))
         dq = self.redis2array(self.get(self.keys.JOINT_VELOCITIES_KEY))
