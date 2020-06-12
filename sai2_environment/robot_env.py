@@ -27,8 +27,10 @@ class RobotEnv(object):
                  isotropic_gains=True,
                  blocking_action=False,
                  blocking_time=2.0,
+                 camera_available=True,
                  rotation_axis=(True, True, True)):
 
+        self.camera_available = camera_available
         # connect to redis server
         hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
         self.env_config = {
@@ -76,8 +78,9 @@ class RobotEnv(object):
         self.camera_thread = threading.Thread(name="camera_thread", target= self.get_frames)
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
         if not self.env_config["simulation"]:
-            self.camera_thread.start()
             self.contact_thread.start()
+            if self.camera_available:
+                self.camera_thread.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -186,6 +189,6 @@ class RobotEnv(object):
             camera_frame = self.convert_image(self._client.get_camera_frame())
             robot_state = self.get_normalized_robot_state()
         else:
-            camera_frame = 0 # self.convert_image(self.color_frame)
+            camera_frame = self.convert_image(self.color_frame) if self.camera_available else 0
             robot_state = self.get_normalized_robot_state()
         return camera_frame, robot_state
