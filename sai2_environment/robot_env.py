@@ -119,8 +119,9 @@ class RobotEnv(object):
 
     def get_contact(self):
         while True:
-            self.contact_event = True if self._client.get_contact_occurence() else self.contact_event
-            print("contact" if self._client.get_contact_occurence() else "no contact")
+            contact = self._client.get_contact_occurence()
+            self.contact_event = True if contact.any() else self.contact_event
+            #print("contact=", contact)
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -163,7 +164,7 @@ class RobotEnv(object):
         #print("Reward: {}".format(reward))
         info = None
         obs = self._get_obs() # has to be before the contact reset \!/
-        print("end of episode, contact happened = ", self.contact_event)
+        #print("end of step, contact happened = ", self.contact_event)
         self.contact_event = False
         return obs, reward, done, info
 
@@ -185,6 +186,6 @@ class RobotEnv(object):
             camera_frame = self.convert_image(self._client.get_camera_frame())
             robot_state = self.get_normalized_robot_state()
         else:
-            camera_frame = self.convert_image(self.color_frame)
+            camera_frame = 0 # self.convert_image(self.color_frame)
             robot_state = self.get_normalized_robot_state()
         return camera_frame, robot_state
