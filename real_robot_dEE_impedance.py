@@ -9,13 +9,14 @@ import time
 def main():
 
     action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
+    blocking_action = True
 
     env = RobotEnv(name='move_object_to_target',
                    simulation=False,
                    action_space=action_space,
                    isotropic_gains=True,
                    render=True,
-                   blocking_action=True,
+                   blocking_action=blocking_action,
                    rotation_axis=(0, 0, 1))    
 
     episodes = 50
@@ -34,8 +35,14 @@ def main():
             stiffness_rot = np.around(np.random.uniform(low=-2, high=2, size=(1,)), 2)
             action = np.concatenate((position,rotation,stiffness_linear,stiffness_rot))
 
+
+            if not blocking_action:
+                time.sleep(0.1)
             obs, reward, done, info = env.step(action)
+<<<<<<< HEAD
+=======
             #time.sleep(1.0)
+>>>>>>> fcb19445e9d230ffae0fd3d4e6b5165b239ea330
 
 
 
