@@ -7,10 +7,13 @@ import pyrealsense2 as rs
 from gym import spaces
 from ipdb import set_trace
 from scipy.spatial.transform import Rotation as Rot
+from sklearn.preprocessing import MinMaxScaler
 
 from sai2_environment.client import RedisClient
 from sai2_environment.action_space import *
 from sai2_environment.utils import name_to_task_class
+from sai2_environment.ranges import Range
+from sai2_environment.camera_handler import CameraHandler
 
 
 class RobotEnv(object):
@@ -25,8 +28,10 @@ class RobotEnv(object):
                  isotropic_gains=True,
                  blocking_action=False,
                  blocking_time=2.0,
+                 camera_available=True,
                  rotation_axis=(True, True, True)):
 
+        self.camera_available = camera_available
         # connect to redis server
         hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
         self.env_config = {
@@ -60,14 +65,22 @@ class RobotEnv(object):
             "state": self._client.get_robot_state().shape,
             "center": (3, 128, 128)
         }
-        self.action_space = self._robot_action.action_space
-        self.pipeline = rs.pipeline()
-        self.color_frame = None
-        self.depth_frame = None
 
-        self.background = threading.Thread(name="background", target= self.get_frames)
+        self.action_space = self._robot_action.action_space
+        self.contact_event = False
+        self.camera_handler = CameraHandler(self.env_config['camera_resolution'])
+
+        self.scaler = MinMaxScaler()
+        self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
+                         np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
+
+        self.camera_thread = threading.Thread(name="camera_thread", target= self.camera_handler.start_pipeline)
+        self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
+        
         if not self.env_config["simulation"]:
-            self.background.start()
+            self.contact_thread.start()
+            if self.camera_available:
+                self.camera_thread.start()
 
     def reset(self):
         # need to reset simulator different from robot
@@ -86,20 +99,19 @@ class RobotEnv(object):
         return self._get_obs()
 
     def convert_image(self, im):
-        return np.rollaxis(im, axis=2, start=0)
+        return np.rollaxis(im, axis=2, start=0)/255.0
 
-    def get_frames(self):
-        self.pipeline.start()
-        align_to = rs.stream.color
-        align = rs.align(align_to)
+    def get_normalized_robot_state(self):
+        robot_state = self.scaler.transform([self._client.get_robot_state()])[0]
+        if not self.env_config['simulation']:
+            robot_state[-1] = self.contact_event
+        return robot_state
+
+    def get_contact(self):
         while True:
-            frames = self.pipeline.wait_for_frames()
-            aligned_frames = align.process(frames)
-            depth_frame = aligned_frames.get_depth_frame()
-            self.depth_frame = np.asanyarray(depth_frame.get_data())
-            color_frame = aligned_frames.get_color_frame()
-            color_frame = np.asanyarray(color_frame.get_data())
-            self.color_frame = cv2.resize(color_frame, self.env_config['camera_resolution'])
+            contact = self._client.get_contact_occurence()
+            self.contact_event = True if contact.any() else self.contact_event
+            #print("contact=", contact)
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -141,7 +153,10 @@ class RobotEnv(object):
 
         #print("Reward: {}".format(reward))
         info = None
-        return self._get_obs(), reward, done, info
+        obs = self._get_obs() # has to be before the contact reset \!/
+        #print("end of step, contact happened = ", self.contact_event)
+        self.contact_event = False
+        return obs, reward, done, info
 
     def take_action(self, action):
         return self._client.take_action(action)
@@ -159,8 +174,8 @@ class RobotEnv(object):
     def _get_obs(self):
         if self.env_config['simulation']:
             camera_frame = self.convert_image(self._client.get_camera_frame())
-            robot_state = self._client.get_robot_state()
+            robot_state = self.get_normalized_robot_state()
         else:
-            camera_frame = self.convert_image(self.color_frame)
-            robot_state = self._client.get_robot_state()
+            camera_frame = self.convert_image(self.camera_handler.get_color_frame()) if self.camera_available else 0
+            robot_state = self.get_normalized_robot_state()
         return camera_frame, robot_state
