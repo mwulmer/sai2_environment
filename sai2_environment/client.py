@@ -134,6 +134,7 @@ class RedisClient(object):
             #if we have to wait for more than a minute something went wrong
             waited_time += 0.1
             if waited_time > 60:
+                print("TIMEOUT: Will exit")
                 sys.exit(0)
                 return False
 
