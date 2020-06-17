@@ -27,7 +27,7 @@ class RobotEnv(object):
                  action_space=ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP,
                  isotropic_gains=True,
                  blocking_action=False,
-                 blocking_time=2.0,
+                 blocking_time=100.0,
                  camera_available=True,
                  rotation_axis=(True, True, True)):
 
@@ -59,7 +59,7 @@ class RobotEnv(object):
         #self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
         self._client.set_action_space(self._robot_action)
-        self._reset_counter = 0
+        self._episodes = 0
 
         self.observation_space = {
             "state": self._client.get_robot_state().shape,
@@ -83,19 +83,9 @@ class RobotEnv(object):
                 self.camera_thread.start()
 
     def reset(self):
-        # need to reset simulator different from robot
-        # these functions wait for the environemnt(simulation) or real robot to be reset
-        if not self.env_config['simulation'] or (self._reset_counter == 0):
-            '''
-            bring the robot back to its initial state if we are in the real world 
-            OR if its the first reset (meaning that sim and controller have just been started)
-            '''
-            self._client.reset_robot()
-        else:
-            # if in simulation, hard reset both simulator and controller
-            self._client.env_hard_reset()        
+        self._client.reset(self._episodes)              
         print("--------------------------------------")
-        self._reset_counter += 1
+        self._episodes += 1        
         return self._get_obs()
 
     def convert_image(self, im):
