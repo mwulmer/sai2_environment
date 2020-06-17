@@ -110,6 +110,7 @@ class RedisClient(object):
         waited_time = 0
         print("[INFO] Waiting for the simulator and controller to reset")
         #first reset the controller
+        print("[INFO] Waiting for the controller to reset")
         while controller_reset is False:
             time.sleep(0.1)
             controller_reset = int(
@@ -120,10 +121,11 @@ class RedisClient(object):
             if waited_time > 60:
                 sys.exit(0)
                 return False
-
+        print("[INFO] Successfully reset controller!")
         #then we reset the simulation
         self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
         waited_time = 0
+        print("[INFO] Waiting for the simulator to reset")
         while simulator_reset is False:
             time.sleep(0.1)
             simulator_reset = int(
