@@ -68,11 +68,14 @@ class RedisClient(object):
         self.set(self.keys.ACTION_KEY, self.array2redis(action))
         return self.set(self.keys.START_ACTION_KEY, 1)
 
-    def set_action_space(self, robot_action):
+    def init_action_space(self, robot_action):
         self._action_space = robot_action.action_space_enum
         #TODO this will send the wrong action size right now
         self._action_space_size = robot_action.action_space_size()
         self._reset_action = robot_action.reset_action()
+        return self.set_action_space()
+
+    def set_action_space(self):
         return self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
     def array2redis(self, arr: np.array) -> str:
@@ -96,14 +99,13 @@ class RedisClient(object):
         
         #if we are using simulation, we have to reset it as well
         if self._config["simulation"] and episodes != 0:
+            print("Reset simulator")
             simulator_reset = False
             self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
             while not simulator_reset:
                 time.sleep(0.1)
                 simulator_reset = int(
                     self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0   
-        
-        self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
         return True
 

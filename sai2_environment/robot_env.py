@@ -58,7 +58,7 @@ class RobotEnv(object):
                                               rotation_axis)
         #self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
-        self._client.set_action_space(self._robot_action)
+        self._client.init_action_space(self._robot_action)
         self._episodes = 0
 
         self.observation_space = {
@@ -85,6 +85,10 @@ class RobotEnv(object):
     def reset(self):
         self._client.reset(self._episodes)              
         print("--------------------------------------")
+        #TODO do we want to set it every time or keep one action space per experiment?
+        if self._episodes != 0:
+            self._client.set_action_space()
+
         self._episodes += 1        
         return self._get_obs()
 
@@ -128,7 +132,6 @@ class RobotEnv(object):
             time.sleep(0.01)
             t0 = time.time()
 
-            waited_time = 0
             while not self._client.action_complete():
                 time.sleep(0.01)
                 if time.time()-t0 > self.blocking_time:

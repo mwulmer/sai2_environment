@@ -30,7 +30,7 @@ def main():
         print("Episode: {}; Elapsed Time: {} minutes".format(episode, round((time.time()-start_time)/60), 4))
         obs = env.reset()
         for step in range(steps):
-            position = np.random.uniform(low=-0.1, high=0.1, size=(3,))
+            position = np.around(np.random.uniform(low=-0.1, high=0.1, size=(3,)), 3)
             rotation = np.around(np.random.uniform(low=-0.1, high=0.1, size=(1,)), 2)
             stiffness_linear = np.around(np.random.uniform(low=-50, high=50, size=(1,)),2)
             stiffness_rot = np.around(np.random.uniform(low=-2, high=2, size=(1,)), 2)
