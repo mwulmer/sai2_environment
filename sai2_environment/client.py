@@ -68,11 +68,14 @@ class RedisClient(object):
         self.set(self.keys.ACTION_KEY, self.array2redis(action))
         return self.set(self.keys.START_ACTION_KEY, 1)
 
-    def set_action_space(self, robot_action):
+    def init_action_space(self, robot_action):
         self._action_space = robot_action.action_space_enum
         #TODO this will send the wrong action size right now
         self._action_space_size = robot_action.action_space_size()
         self._reset_action = robot_action.reset_action()
+        return self.set_action_space()
+
+    def set_action_space(self):
         return self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
 
     def array2redis(self, arr: np.array) -> str:
@@ -84,66 +87,26 @@ class RedisClient(object):
     def action_complete(self) -> bool:
         return int(self.get(self.keys.ACTION_COMPLETE_KEY).decode()) == 1
 
-    def reset_robot(self) -> bool:
+    def reset(self, episodes) -> bool: 
+        #first reset the robot          
+        robot_is_reset = False  
         self.take_action(self._reset_action)
-        robot_is_reset = self.robot_is_reset()
-        waited_time = 0
-        if not robot_is_reset:
-            print("[INFO] Waiting for the robot to reset")
+        robot_is_reset = self.robot_is_reset()        
+        if not robot_is_reset:            
             while not robot_is_reset:
                 robot_is_reset = self.robot_is_reset()
                 time.sleep(0.1)
+        
+        #if we are using simulation, we have to reset it as well
+        if self._config["simulation"] and episodes != 0:
+            print("Reset simulator")
+            simulator_reset = False
+            self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
+            while not simulator_reset:
+                time.sleep(0.1)
+                simulator_reset = int(
+                    self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0   
 
-                waited_time += 0.1
-                #if we have to wait for more than a minute something went wrong
-                if waited_time > 60:
-                    sys.exit(0)
-                    return False
-        #TODO move this to logging
-        print("[INFO] Successfully moved the robot to its initial state!")
-        return True
-
-    def env_hard_reset(self) -> bool:
-        self.set(self.keys.HARD_RESET_CONTROLLER_KEY, 1)
-        controller_reset = False
-        simulator_reset = False
-        waited_time = 0
-        print("[INFO] Waiting for the simulator and controller to reset")
-        #first reset the controller
-        while controller_reset is False:
-            time.sleep(0.1)
-            controller_reset = int(
-                self.get(self.keys.HARD_RESET_CONTROLLER_KEY).decode()) == 0
-            
-            #if we have to wait for more than a minute something went wrong
-            waited_time += 0.1
-            if waited_time > 60:
-                sys.exit(0)
-                return False
-
-        #then we reset the simulation
-        self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
-        waited_time = 0
-        while simulator_reset is False:
-            time.sleep(0.1)
-            simulator_reset = int(
-                self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0
-
-            #if we have to wait for more than a minute something went wrong
-            waited_time += 0.1
-            if waited_time > 60:
-                sys.exit(0)
-                return False
-
-        #TODO move this to logging
-        print("[INFO] Successfully reset simulator and controller!")
-
-        #send the reset action again such that the controller knows the current action space
-        #self.take_action(self._reset_action)
-        self.set(self.keys.ACTION_SPACE_KEY, self._action_space.value)
-
-        #testing if the bug is just a synch issue
-        time.sleep(2)
         return True
 
     def get(self, key):

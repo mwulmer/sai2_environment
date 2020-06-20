@@ -17,7 +17,6 @@ class RedisKeys(object):
 
             self.SENSED_CONTACT_KEY = "sai2::PandaApplication::sensors::contact"
 
-            self.HARD_RESET_CONTROLLER_KEY = "sai2::ReinforcementLearning::hard_reset_controller"
             self.HARD_RESET_SIMULATOR_KEY = "sai2::ReinforcementLearning::hard_reset_simulator"
 
         else:        
