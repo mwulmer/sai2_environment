@@ -26,7 +26,7 @@ class CameraHandler:
             self.__resolution = resolution
 
             if device_id is None:
-                self.device_id = "829212070352"  # Lab: "828112071102"  Home:"829212070352"
+                self.device_id = "828112071102"  # Lab: "828112071102"  Home:"829212070352"
             else:
                 self.device_id = device_id
             
@@ -268,55 +268,59 @@ class CameraHandler:
         while (len(temp)<4):
             temp = self.get_marker_position() 
             end=time.time()
-            if(end-start_time>0.02):
+            if(end-start_time>0.01):
                 print("No enough markers detected for distance computation")
                 return 0
                 # break
+        # if len(temp)<4:
+        #      return 0
         try:
             # Moving object localization marker
-            if (temp.get(0)!=None):
-                x_id0 = temp[0][0]
-                y_id0 = temp[0][1]
-                p_0 = [x_id0,y_id0]
-                # Deproject pixel to 3D point
-                point_0 = self.pixel2point(self.depth_frame,p_0)
+            # if (temp.get(0)!=None):
+            x_id0 = temp[0][0]
+            y_id0 = temp[0][1]
+            p_0 = [x_id0,y_id0]
+            # Deproject pixel to 3D point
+            point_0 = self.pixel2point(self.depth_frame,p_0)
             
-            if (temp.get(1)!=None):
-                x_id1 = temp[1][0]
-                y_id1 = temp[1][1]
-                p_1 = [x_id1,y_id1]
-                # Deproject pixel to 3D point
-                point_1 = self.pixel2point(self.depth_frame,p_1)
+            # if (temp.get(1)!=None):
+            x_id1 = temp[1][0]
+            y_id1 = temp[1][1]
+            p_1 = [x_id1,y_id1]
+            # Deproject pixel to 3D point
+            point_1 = self.pixel2point(self.depth_frame,p_1)
             
             # Target object localization marker 
             # Single ID-5
-            if(temp.get(5)!=None):
-                x_id5 = temp[5][0]
-                y_id5 = temp[5][1]
-                p_5 = [x_id5,y_id5]
-                # Deproject pixel to 3D point
-                point_5 = self.pixel2point(self.depth_frame,p_5)
+            # if(temp.get(5)!=None):
+            x_id5 = temp[5][0]
+            y_id5 = temp[5][1]
+            p_5 = [x_id5,y_id5]
+            # Deproject pixel to 3D point
+            point_5 = self.pixel2point(self.depth_frame,p_5)
 
             # Dual ID-4 and ID-3
-            if(temp.get(4)!=None):
-                x_id4 = temp[4][0]
-                y_id4 = temp[4][1]
-                p_4 = [x_id4,y_id4]
-                # Deproject pixel to 3D point
-                point_4 = self.pixel2point(self.depth_frame,p_4)
+            # if(temp.get(4)!=None):
+            x_id4 = temp[4][0]
+            y_id4 = temp[4][1]
+            p_4 = [x_id4,y_id4]
+            # Deproject pixel to 3D point
+            point_4 = self.pixel2point(self.depth_frame,p_4)
 
-            if(temp.get(3)!=None):
-                x_id3 = temp[3][0]
-                y_id3 = temp[3][1]
-                p_3 = [x_id3,y_id3]
-                # Deproject pixel to 3D point
-                point_3 = self.pixel2point(self.depth_frame,p_3)
+            # if(temp.get(3)!=None):
+            x_id3 = temp[3][0]
+            y_id3 = temp[3][1]
+            p_3 = [x_id3,y_id3]
+            # Deproject pixel to 3D point
+            point_3 = self.pixel2point(self.depth_frame,p_3)
                               
             
             # Calculate target point
+            # if (temp.get(5)!=None and temp.get(4)!=None and temp.get(3)!=None):
             point_target=[point_4[0]+point_3[0]-point_5[0],point_4[1]+point_3[1]-point_5[1],point_4[2]+point_3[2]-point_5[2]]
             
             # Euclidean distance
+            # dis_obj2target_goal=0
             if (temp.get(0)!=None and temp.get(1)!=None):
                 point_temp = [(point_0[0]+point_1[0])/2,(point_0[1]+point_1[1])/2,(point_0[2]+point_1[2])/2]
                 dis_obj2target_goal = self.distance_3dpoints(point_temp,point_target)
@@ -325,14 +329,13 @@ class CameraHandler:
                 dis_obj2target_goal = dis_obj2target*np.sin(np.arccos(0.02/dis_obj2target))
             if (temp.get(0)==None and temp.get(1)!=None):
                 dis_obj2target_goal = self.distance_3dpoints(point_1,point_target) 
-
-
-
+            
+            return dis_obj2target_goal 
         
         except KeyError:
             print("Keyerror!!!")
 
-        return dis_obj2target_goal                      
+        # areturn dis_obj2target_goal                      
 
     def pixel2point(self,frame,u):
         
@@ -389,11 +392,33 @@ if __name__ == '__main__':
     t.start()
     # time needed for camera to warm up to continue getting frames (When running the camera in the background)
     time.sleep(2)
-    a=0
-    start= time.time()
-    while (a==0):
-        a=ch.get_distance()
-        end= time.time()
-    print(end-start)
-    print(a)
+    
+    
+    # test average time to get distance
+    # count = 0
+    # sumss = 0
+    # while count<1000:
+    #     time.sleep(0.005)
+    #     a=0
+    #     start= time.time()
+    #     while (a==0):
+    #         a=ch.get_distance()
+    #         end= time.time()
+    #     print(end-start)
+    #     sumss+=end-start
+    #     count=count+1
+    # print (count)
+    # print (sumss)
+    
+    # Show distance in cv window
+    # cv2.namedWindow('update', cv2.WINDOW_AUTOSIZE)
+    # while True:
+    #     a = ch.markerprocess()
+    #     if a is not None:
+    #         cv2.imshow('update',a)
+    #     key = cv2.waitKey(1)
+    #     if key & 0xFF == ord('q') or key == 27:
+    #         cv2.destroyAllWindows()
+    #         break
+
 
