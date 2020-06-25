@@ -98,7 +98,7 @@ class TaskSpaceAction(RobotAction):
                                        [500, 500, 500, 10, 10, 10])
 
         else:  #delta position
-            x_min = np.array([-0.2, -0.2, -0.2])
+            x_min = np.array([-0.8, -0.8, -0.8])
             x_max = -1 * x_min
 
             R_min = -0.1 * np.ones((rot_dim, ))
