@@ -35,10 +35,6 @@ class CameraHandler:
             config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 60)
             config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 60)
 
-            profile = self.pipeline.start(config)
-            align_to = rs.stream.color
-            self.align = rs.align(align_to)
-
             self.color_image = None
             self.color_frame = None
             self.depth_image = None
@@ -64,6 +60,9 @@ class CameraHandler:
         # align_to = rs.stream.color
         # align = rs.align(align_to)
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+        profile = self.pipeline.start(config)
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
         while True:
             frames = self.pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000) # wait 10 seconds for first frame
             aligned_frames = self.align.process(frames)
