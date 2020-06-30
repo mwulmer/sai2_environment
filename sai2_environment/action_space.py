@@ -29,6 +29,8 @@ class ActionSpace(Enum):
     ABS_EE_POSE_IMPEDANCE = 212
     DELTA_EE_POSE_IMPEDANCE = 222
 
+    MT_EE_POSE_IMPEDANCE = 232
+
 
 def get_robot_action(action_space_enum, isotropic_gains, rotation_axis):
     if action_space_enum.value // 10**2 % 10 == 1:

@@ -9,7 +9,7 @@ from PIL import Image
 
 def main():
 
-    action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
+    action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
     blocking_action = True
 
     env = RobotEnv(name='move_object_to_target',
@@ -18,10 +18,11 @@ def main():
                    isotropic_gains=True,
                    render=True,
                    blocking_action=blocking_action,
+                   blocking_time=0.05,
                    rotation_axis=(0, 0, 1))    
 
     episodes = 50
-    steps = 200
+    steps = 1000
 
     start_time = time.time()    
 
@@ -30,8 +31,8 @@ def main():
         print("Episode: {}; Elapsed Time: {} minutes".format(episode, round((time.time()-start_time)/60), 4))
         obs = env.reset()
         for step in range(steps):
-            position = np.around(np.random.uniform(low=-0.1, high=0.1, size=(3,)), 3)
-            rotation = np.around(np.random.uniform(low=-0.1, high=0.1, size=(1,)), 2)
+            position = np.around(np.random.normal(loc=0.0, scale=0.1, size=(3,)), 3)
+            rotation = np.around(np.random.uniform(low=0, high=0, size=(1,)), 2)
             stiffness_linear = np.around(np.random.uniform(low=-50, high=50, size=(1,)),2)
             stiffness_rot = np.around(np.random.uniform(low=-2, high=2, size=(1,)), 2)
             action = np.concatenate((position,rotation,stiffness_linear,stiffness_rot))
