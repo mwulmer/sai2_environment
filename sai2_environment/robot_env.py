@@ -69,7 +69,7 @@ class RobotEnv(object):
 
         self.action_space = self._robot_action.action_space
         self.contact_event = False
-        self.camera_handler = CameraHandler(self.env_config['camera_resolution'])
+        self.camera_handler = CameraHandler.getInstance(self.env_config['camera_resolution'])
 
         self.scaler = MinMaxScaler()
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
