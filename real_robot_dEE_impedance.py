@@ -9,19 +9,15 @@ from PIL import Image
 
 def main():
 
-    action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
-    blocking_action = True
+    action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
 
     env = RobotEnv(name='move_object_to_target',
                    simulation=True,
                    action_space=action_space,
-                   isotropic_gains=True,
-                   render=True,
-                   blocking_action=blocking_action,
-                   blocking_time=0.05,
+                   action_frequency=50,
                    rotation_axis=(0, 0, 1))    
 
-    episodes = 50
+    episodes = 10
     steps = 1000
 
     start_time = time.time()    
@@ -37,10 +33,9 @@ def main():
             stiffness_rot = np.around(np.random.uniform(low=-2, high=2, size=(1,)), 2)
             action = np.concatenate((position,rotation,stiffness_linear,stiffness_rot))
 
-
-            if not blocking_action:
-                time.sleep(0.1)
             obs, reward, done, info = env.step(action)
+    
+    print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
 
 if __name__ == "__main__":
     main()

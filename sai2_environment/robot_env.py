@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from sai2_environment.client import RedisClient
 from sai2_environment.action_space import *
-from sai2_environment.utils import name_to_task_class
+from sai2_environment.utils import name_to_task_class, Timer
 from sai2_environment.ranges import Range
 from sai2_environment.camera_handler import CameraHandler
 
@@ -27,7 +27,7 @@ class RobotEnv(object):
                  action_space=ActionSpace.ABS_JOINT_POSITION_DYN_DECOUP,
                  isotropic_gains=True,
                  blocking_action=False,
-                 blocking_time=100.0,
+                 action_frequency=20,
                  camera_available=True,
                  rotation_axis=(True, True, True)):
 
@@ -48,9 +48,10 @@ class RobotEnv(object):
         self._client = RedisClient(config=self.env_config)
         self._client.connect()
 
+        self.timer = Timer(frequency=action_frequency)
+
         #TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
-        self.blocking_time = blocking_time
         self.task = task_class('tmp', self._client, simulation=simulation)
 
         # set action space to redis
@@ -130,17 +131,16 @@ class RobotEnv(object):
             #self._client.action_complete()))
             self.take_action(action)
             time.sleep(0.01)
-            t0 = time.time()
 
             while not self._client.action_complete():
-                time.sleep(0.01)
-                if time.time()-t0 > self.blocking_time:
-                    break
+                time.sleep(0.01)         
 
             reward, done = self._compute_reward()
 
         # non-blocking does not wait and computes reward right away
         else:
+            self.timer.wait_for_next_loop()
+
             self.take_action(action)
             reward, done = self._compute_reward()
 
