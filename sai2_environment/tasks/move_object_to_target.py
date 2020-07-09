@@ -43,17 +43,15 @@ class MoveObjectToTarget(Task):
             # new modify
             # When detecting no enough markers at the very beginning
             d_current = 0.5
-            reward = d_current
-
-            if self.current_obj_distance==1:
-                reward = self.camera_handler.grab_distance()
+            self.last_obj_distance = self.current_obj_distance
+            self.current_obj_distance = self.camera_handler.grab_distance()
+            d_last = self.last_obj_distance
+            d_current = self.current_obj_distance
+            if d_current==1:
+                reward = 0
             else:
-                self.last_obj_distance = self.current_obj_distance
-                self.current_obj_distance = self.camera_handler.grab_distance()
-                d_last = self.last_obj_distance
-                d_current = self.current_obj_distance
-                # reward = (d_last - d_current)/self.total_distance
-                reward = d_current
+                reward = (d_last - d_current)/self.total_distance
+                # reward = d_current
             done = d_current<0.04
         return reward, done
 

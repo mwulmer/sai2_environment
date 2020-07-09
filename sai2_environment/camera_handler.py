@@ -104,22 +104,33 @@ class CameraHandler:
             
             # Compute the distance and store them in the buffer
             distance_temp = self.get_distance()
-            old_value = 1
-            if distance_temp!= 1:
-                if ((abs(distance_temp-old_value) >0.05 or distance_temp>0.5)) and old_value!=1:
-                    self.distance_buffer.append(old_value)
-                else:
-                    self.distance_buffer.append(distance_temp)
-                    old_value = distance_temp  
-            if distance_temp==1:
-                if (len(self.distance_buffer)!=0):
-                    if (self.distance_buffer[-1]!=1):
-                        self.distance_buffer.append(self.distance_buffer[-1])
-                    else:
-                        self.distance_buffer.append(old_value)
-                else:
-                    self.distance_buffer.append(distance_temp)
+            old_value =1
 
+            # if distance_temp != 1:
+            #     if (distance_temp>0.5) and old_value!=1:
+            #         self.distance_buffer.append(old_value)
+            #     else:
+            #         self.distance_buffer.append(distance_temp)
+            #         old_value = distance_temp
+            # if distance_temp ==1:
+            #     if (len(self.distance_buffer)!=0):
+            #         if (self.distance_buffer[-1]!=1):
+            #             self.distance_buffer.append(self.distance_buffer[-1])
+            #         else:
+            if (old_value!=1 and distance_temp!= 1 and abs(distance_temp-old_value) >0.05 or distance_temp>0.5 ):
+                self.distance_buffer.append(old_value)
+            else:
+                if (distance_temp==1):
+                    if (len(self.distance_buffer)!=0):
+                        if (self.distance_buffer[-1]!=1):
+                            self.distance_buffer.append(self.distance_buffer[-1])
+                        else:
+                            self.distance_buffer.append(old_value)
+                    else:
+                        self.distance_buffer.append(distance_temp)
+                else:
+                    self.distance_buffer.append(distance_temp)
+                    old_value = distance_temp
 
             # if self.color_image is not None:
             #     cv2.imshow('RealSense',self.color_image)
@@ -488,7 +499,7 @@ if __name__ == '__main__':
     count = 2000
     dis = []
     while(count!=0):
-        time.sleep(0.005)
+        time.sleep(0.01)
         print(ch.grab_distance())
         # print(ch.get_current_obj())
         dis.append(ch.grab_distance())
