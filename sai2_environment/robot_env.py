@@ -50,9 +50,7 @@ class RobotEnv(object):
 
         self.timer = Timer(frequency=action_frequency)
 
-        #TODO define what all the responsibilites of task are
-        task_class = name_to_task_class(name)
-        self.task = task_class('tmp', self._client, simulation=simulation)
+
 
         # set action space to redis
         self._robot_action = get_robot_action(action_space, isotropic_gains,
@@ -70,6 +68,10 @@ class RobotEnv(object):
         self.action_space = self._robot_action.action_space
         self.contact_event = False
         self.camera_handler = CameraHandler.getInstance(self.env_config['camera_resolution'])
+
+        #TODO define what all the responsibilites of task are
+        task_class = name_to_task_class(name)
+        self.task = task_class('tmp', self._client, camera_handler=self.camera_handler,simulation=simulation)
 
         self.scaler = MinMaxScaler()
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
@@ -93,7 +95,8 @@ class RobotEnv(object):
         if self._episodes != 0:
             self._client.set_action_space()
 
-        self._episodes += 1        
+        self._episodes += 1
+        self.task.initialize_task()        
         return self._get_obs()
 
     def convert_image(self, im):

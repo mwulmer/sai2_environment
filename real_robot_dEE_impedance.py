@@ -19,7 +19,7 @@ def main():
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
-    episodes = 10
+    episodes = 20
     steps = 1000
 
     start_time = time.time()    
@@ -36,7 +36,7 @@ def main():
 
             obs, reward, done, info = env.step(action)
             im = obs[0]
-
+            print(reward)
             if im is not None:
                 im = np.rollaxis(im, 0, 3)
                 cv2.imshow('RealSense',im)
