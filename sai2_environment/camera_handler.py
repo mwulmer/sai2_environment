@@ -3,6 +3,8 @@ import numpy as np
 import pyrealsense2 as rs
 import threading
 import time
+from collections import deque
+import matplotlib.pyplot as plt
 
 
 class CameraHandler:
@@ -43,6 +45,12 @@ class CameraHandler:
             self.depth_image = None
             self.depth_frame = None
             self.frame_count = 0
+
+
+            self.color_buffer = deque(maxlen=10)
+            self.depth_buffer = deque(maxlen=10)
+            self.distance_buffer = deque(maxlen=10)
+            
             # Aruco marker part
             # Load the dictionary that was used to generate the markers.
             self.dictionary = cv2.aruco.Dictionary_get(
@@ -52,16 +60,20 @@ class CameraHandler:
             self.parameters = cv2.aruco.DetectorParameters_create()
 
     def get_color_frame(self):
-        return self.__color_frame
+        return self.color_buffer[-1]
 
     def get_depth_frame(self):
-        return self.__depth_frame
+        return self.depth_buffer[-1]
+
+    def grab_distance(self):
+        return self.distance_buffer[-1]
 
     def start_pipeline(self):
         # self.pipeline.start()
         # align_to = rs.stream.color
         # align = rs.align(align_to)
-        #cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+        
         profile = self.pipeline.start(self.config)
         align_to = rs.stream.color
         self.align = rs.align(align_to)
@@ -73,6 +85,7 @@ class CameraHandler:
 
             self.depth_frame = depth_frame
             self.__depth_frame = np.asanyarray(depth_frame.get_data())
+            self.depth_buffer.append(self.__depth_frame)
 
             color_frame = aligned_frames.get_color_frame()
             self.color_frame = color_frame
@@ -82,12 +95,35 @@ class CameraHandler:
 
             self.__color_frame = cv2.resize(color_frame, self.__resolution)
 
-            # if self.color_image is not None:
-            #     cv2.imshow('RealSense',self.color_image)
-            # key = cv2.waitKey(1)
-            # if key & 0xFF == ord('q') or key == 27:
-            #     cv2.destroyAllWindows()
-            #     break
+            self.color_buffer.append(self.__color_frame)
+            
+            distance_temp = self.get_distance()
+            old_value =1
+            if distance_temp != 1:
+                old_value = distance_temp
+            if (distance_temp==1):
+                if (len(self.distance_buffer)!=0):
+                    if (self.distance_buffer[-1]!=1):
+                        self.distance_buffer.append(self.distance_buffer[-1])
+                    else:
+                        self.distance_buffer.append(old_value)
+                else:
+                    self.distance_buffer.append(distance_temp)
+            else:
+                self.distance_buffer.append(distance_temp)
+            
+            if (len(self.distance_buffer)>2):
+                if (distance_temp !=1 and self.distance_buffer[-1]-self.distance_buffer[-2]>0,2):
+                    self.distance_buffer.append(self.distance_buffer[-2])
+
+
+
+            if self.color_image is not None:
+                cv2.imshow('RealSense',self.color_image)
+            key = cv2.waitKey(1)
+            if key & 0xFF == ord('q') or key == 27:
+                cv2.destroyAllWindows()
+                break
 
     # Capture current frame  (like shooting a picture)
     def _capture(self):
@@ -285,27 +321,27 @@ class CameraHandler:
         while (len(temp) < 4):
             temp = self.get_marker_position()
             end = time.time()
-            if(end-start_time > 0.01):
-                print("No enough markers detected for distance computation")
-                return 0
+            if(end-start_time > 0.05):
+                # print("No enough markers detected for distance computation")
+                return 1
                 # break
         # if len(temp)<4:
         #      return 0
         try:
             # Moving object localization marker
-            # if (temp.get(0)!=None):
-            x_id0 = temp[0][0]
-            y_id0 = temp[0][1]
-            p_0 = [x_id0, y_id0]
-            # Deproject pixel to 3D point
-            point_0 = self.pixel2point(self.depth_frame, p_0)
+            if (temp.get(0)!=None):
+                x_id0 = temp[0][0]
+                y_id0 = temp[0][1]
+                p_0 = [x_id0, y_id0]
+                # Deproject pixel to 3D point
+                point_0 = self.pixel2point(self.depth_frame, p_0)
 
-            # if (temp.get(1)!=None):
-            x_id1 = temp[1][0]
-            y_id1 = temp[1][1]
-            p_1 = [x_id1, y_id1]
-            # Deproject pixel to 3D point
-            point_1 = self.pixel2point(self.depth_frame, p_1)
+            if (temp.get(1)!=None):
+                x_id1 = temp[1][0]
+                y_id1 = temp[1][1]
+                p_1 = [x_id1, y_id1]
+                # Deproject pixel to 3D point
+                point_1 = self.pixel2point(self.depth_frame, p_1)
 
             # Target object localization marker
             # Single ID-5
@@ -339,17 +375,13 @@ class CameraHandler:
             # Euclidean distance
             # dis_obj2target_goal=0
             if (temp.get(0) != None and temp.get(1) != None):
-                point_temp = [(point_0[0]+point_1[0])/2,
-                              (point_0[1]+point_1[1])/2, (point_0[2]+point_1[2])/2]
-                dis_obj2target_goal = self.distance_3dpoints(
-                    point_temp, point_target)
+                point_temp = [(point_0[0]+point_1[0])/2,(point_0[1]+point_1[1])/2,(point_0[2]+point_1[2])/2]
+                dis_obj2target_goal = self.distance_3dpoints(point_temp, point_target)
             if (temp.get(0) != None and temp.get(1) == None):
                 dis_obj2target = self.distance_3dpoints(point_0, point_target)
-                dis_obj2target_goal = dis_obj2target * \
-                    np.sin(np.arccos(0.02/dis_obj2target))
+                dis_obj2target_goal = dis_obj2target #*np.sin(np.arccos(0.02/dis_obj2target))
             if (temp.get(0) == None and temp.get(1) != None):
-                dis_obj2target_goal = self.distance_3dpoints(
-                    point_1, point_target)
+                dis_obj2target_goal = self.distance_3dpoints(point_1, point_target)
 
             return dis_obj2target_goal
 
@@ -417,6 +449,29 @@ if __name__ == '__main__':
     t.start()
     # time needed for camera to warm up to continue getting frames (When running the camera in the background)
     time.sleep(2)
+        
+
+    count = 1000
+    dis = []
+    while(count!=0):
+        time.sleep(0.01)
+        # print(ch.get_color_frame())
+        print(ch.grab_distance())
+        dis.append(ch.grab_distance())
+        count = count -1
+    
+    data_size = len(dis)
+    axis = np.arange( 0, 1000, 1 )
+    lablesize = 18
+    fontsize  = 16
+    plt.plot(axis, dis, color = "steelblue", linewidth=1.0, label='distance')
+    plt.xlabel('Count',fontsize=lablesize)
+    plt.ylabel('Distance[m]',fontsize=lablesize)
+    # plt.xticks(fontsize=fontsize)
+    # plt.yticks(fontsize=fontsize)
+    # plt.legend(loc='lower right',fontsize=18)
+    plt.grid(ls='--')
+    plt.show()
 
     # test average time to get distance
     # count = 0
