@@ -42,7 +42,6 @@ class MoveObjectToTarget(Task):
             #TODO
             # new modify
             # When detecting no enough markers at the very beginning
-            d_current = 0.5
             self.last_obj_distance = self.current_obj_distance
             self.current_obj_distance = self.camera_handler.grab_distance()
             d_last = self.last_obj_distance

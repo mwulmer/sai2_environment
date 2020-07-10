@@ -104,33 +104,16 @@ class CameraHandler:
             
             # Compute the distance and store them in the buffer
             distance_temp = self.get_distance()
-            old_value =1
+            
+            if (distance_temp==1):
+                self.distance_buffer.append(self.distance_buffer[-1])
 
-            # if distance_temp != 1:
-            #     if (distance_temp>0.5) and old_value!=1:
-            #         self.distance_buffer.append(old_value)
-            #     else:
-            #         self.distance_buffer.append(distance_temp)
-            #         old_value = distance_temp
-            # if distance_temp ==1:
-            #     if (len(self.distance_buffer)!=0):
-            #         if (self.distance_buffer[-1]!=1):
-            #             self.distance_buffer.append(self.distance_buffer[-1])
-            #         else:
-            if (old_value!=1 and distance_temp!= 1 and abs(distance_temp-old_value) >0.05 or distance_temp>0.5 ):
-                self.distance_buffer.append(old_value)
-            else:
-                if (distance_temp==1):
-                    if (len(self.distance_buffer)!=0):
-                        if (self.distance_buffer[-1]!=1):
-                            self.distance_buffer.append(self.distance_buffer[-1])
-                        else:
-                            self.distance_buffer.append(old_value)
-                    else:
-                        self.distance_buffer.append(distance_temp)
-                else:
+
+            if (distance_temp!=1):
+                if (distance_temp<0.5):
                     self.distance_buffer.append(distance_temp)
-                    old_value = distance_temp
+                else:
+                    self.distance_buffer.append(self.distance_buffer[-1])
 
             # if self.color_image is not None:
             #     cv2.imshow('RealSense',self.color_image)
@@ -360,9 +343,7 @@ class CameraHandler:
             if(end-start_time > 0.005):
                 # print("No enough markers detected for distance computation")
                 return 1
-                # break
-        # if len(temp)<4:
-        #      return 0
+        old_value = 1
         try:
             # Moving object localization marker
             if (temp.get(0)!=None):

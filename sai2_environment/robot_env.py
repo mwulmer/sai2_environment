@@ -69,14 +69,11 @@ class RobotEnv(object):
         self.contact_event = False
         self.camera_handler = CameraHandler.getInstance(self.env_config['camera_resolution'])
 
-        #TODO define what all the responsibilites of task are
-        task_class = name_to_task_class(name)
-        self.task = task_class('tmp', self._client, camera_handler=self.camera_handler,simulation=simulation)
+
 
         self.scaler = MinMaxScaler()
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
                          np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
-
         
         self.camera_thread = threading.Thread(name="camera_thread", target= self.camera_handler.start_pipeline)
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
@@ -87,6 +84,10 @@ class RobotEnv(object):
                 self.camera_thread.start()
         #ẃarm up camera
         time.sleep(1)
+
+        #TODO define what all the responsibilites of task are
+        task_class = name_to_task_class(name)
+        self.task = task_class('tmp', self._client, camera_handler=self.camera_handler,simulation=simulation)
 
     def reset(self):
         self._client.reset(self._episodes)              
