@@ -54,6 +54,7 @@ class CameraHandler:
             # Aruco marker part
             # Load the dictionary that was used to generate the markers.
             self.obj_position =None
+            self.goal_position =None
 
             self.dictionary = cv2.aruco.Dictionary_get(
                 cv2.aruco.DICT_ARUCO_ORIGINAL)
@@ -103,7 +104,7 @@ class CameraHandler:
             self.color_buffer.append(self.__color_frame)
             
             # Compute the distance and store them in the buffer
-            distance_temp = self.get_distance()
+            distance_temp = self.cal_distance()
             
             if (distance_temp==1):
                 self.distance_buffer.append(self.distance_buffer[-1])
@@ -324,25 +325,57 @@ class CameraHandler:
                 # Deproject pixel to 3D point
                 point_obj = self.pixel2point(self.depth_frame, p_1)
             
+            if(result_center.get(5)!=None):
+                x_id5 = result_center[5][0]
+                y_id5 = result_center[5][1]
+                p_5 = [x_id5, y_id5]
+                # Deproject pixel to 3D point
+                point_5 = self.pixel2point(self.depth_frame, p_5)
+
+            # Dual ID-4 and ID-3
+            if(result_center.get(4)!=None):
+                x_id4 = result_center[4][0]
+                y_id4 = result_center[4][1]
+                p_4 = [x_id4, y_id4]
+                # Deproject pixel to 3D point
+                point_4 = self.pixel2point(self.depth_frame, p_4)
+
+            if(result_center.get(3)!=None):
+                x_id3 = result_center[3][0]
+                y_id3 = result_center[3][1]
+                p_3 = [x_id3, y_id3]
+                # Deproject pixel to 3D point
+                point_3 = self.pixel2point(self.depth_frame, p_3)
+
+            # Calculate target point
+            if (result_center.get(5)!=None and result_center.get(4)!=None and result_center.get(3)!=None):
+                point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
+                            point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
+                
+                # store the goal position
+                self.goal_position = point_target
+                old_goal = point_target
+
+            # store the obj position
             self.obj_position = point_obj
             old_obj = point_obj
         
         except KeyError:
             self.obj_position = old_obj
-
+            self.goal_position = old_goal
 
         return result_center
 
-    def get_distance(self):
+    def cal_distance(self):
         # TODO more robust
         start_time = time.time()
-        temp = self.get_marker_position()
-        while (len(temp) < 4):
+        temp = self.get_marker_position()        
+        while (self.obj_position == None or self.goal_position == None ):
             temp = self.get_marker_position()
             end = time.time()
             if(end-start_time > 0.005):
                 # print("No enough markers detected for distance computation")
-                return 1
+                return 1 
         old_value = 1
         try:
             # Moving object localization marker
@@ -360,36 +393,7 @@ class CameraHandler:
                 # Deproject pixel to 3D point
                 point_1 = self.pixel2point(self.depth_frame, p_1)
 
-            # Target object localization marker
-            # Single ID-5
-            # if(temp.get(5)!=None):
-            x_id5 = temp[5][0]
-            y_id5 = temp[5][1]
-            p_5 = [x_id5, y_id5]
-            # Deproject pixel to 3D point
-            point_5 = self.pixel2point(self.depth_frame, p_5)
-
-            # Dual ID-4 and ID-3
-            # if(temp.get(4)!=None):
-            x_id4 = temp[4][0]
-            y_id4 = temp[4][1]
-            p_4 = [x_id4, y_id4]
-            # Deproject pixel to 3D point
-            point_4 = self.pixel2point(self.depth_frame, p_4)
-
-            # if(temp.get(3)!=None):
-            x_id3 = temp[3][0]
-            y_id3 = temp[3][1]
-            p_3 = [x_id3, y_id3]
-            # Deproject pixel to 3D point
-            point_3 = self.pixel2point(self.depth_frame, p_3)
-
-            # Calculate target point
-            # if (temp.get(5)!=None and temp.get(4)!=None and temp.get(3)!=None):
-            point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
-                            point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
-
-            point_target = np.array(point_target)
+            point_target = np.array(self.goal_position)
             # Euclidean distance
             # dis_obj2target_goal=0
             if (temp.get(0) != None and temp.get(1) != None):
@@ -411,10 +415,8 @@ class CameraHandler:
             return dis_obj2target_goal
 
         except KeyError:
-            print("Keyerror!!!")
+            # print("Keyerror!!!")
             return old_value
-
-        # areturn dis_obj2target_goal
 
     def pixel2point(self, frame, u):
 
