@@ -6,7 +6,7 @@ import numpy as np
 import time
 from PIL import Image
 import cv2
-
+from torch.utils.tensorboard import SummaryWriter
 
 def main():
 
@@ -20,9 +20,10 @@ def main():
                    rotation_axis=(0, 0, 0))    
 
     episodes = 20
-    steps = 1000
+    steps = 2000
 
     start_time = time.time()    
+    writer = SummaryWriter()
 
     for episode in range(episodes):
         
@@ -36,7 +37,9 @@ def main():
 
             obs, reward, done, info = env.step(action)
             im = obs[0]
-            print(reward)
+            if reward != 0.0:
+                print(reward)
+            writer.add_scalar("reward", reward, step)
             if im is not None:
                 im = np.rollaxis(im, 0, 3)
                 cv2.imshow('RealSense',im)

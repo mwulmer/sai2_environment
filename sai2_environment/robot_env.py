@@ -165,7 +165,11 @@ class RobotEnv(object):
         return None
 
     def close(self):
-        return 0
+        print("Closing threads")
+        time.sleep(2)
+        self.camera_thread.exit()
+        self.contact_thread.exit()
+        return True
 
     def _compute_reward(self):
         reward, done = self.task.compute_reward()
