@@ -50,7 +50,7 @@ class RobotEnv(object):
 
         self.timer = Timer(frequency=action_frequency)
 
-
+        self.start_time = time.time()
 
         # set action space to redis
         self._robot_action = get_robot_action(action_space, isotropic_gains,
@@ -90,11 +90,13 @@ class RobotEnv(object):
         self.task = task_class('tmp', self._client, camera_handler=self.camera_handler,simulation=simulation)
 
     def reset(self):
-        self._client.reset(self._episodes)              
-        print("--------------------------------------")
+        self._client.reset(self._episodes)  
         #TODO do we want to set it every time or keep one action space per experiment?
         if self._episodes != 0:
             self._client.set_action_space()
+       
+        if self._episodes%10==0:
+            print("Episode: {}; Elapsed Time: {} minutes".format(self._episodes, round((time.time()-self.start_time)/60), 4))
 
         self._episodes += 1
         self.task.initialize_task()        

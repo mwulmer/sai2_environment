@@ -99,7 +99,6 @@ class RedisClient(object):
         
         #if we are using simulation, we have to reset it as well
         if self._config["simulation"] and episodes != 0:
-            print("Reset simulator")
             simulator_reset = False
             self.set(self.keys.HARD_RESET_SIMULATOR_KEY, 1)
             while not simulator_reset:
