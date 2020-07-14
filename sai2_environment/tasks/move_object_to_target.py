@@ -28,6 +28,11 @@ class MoveObjectToTarget(Task):
 
 
     def compute_reward(self):
+        """
+        There is a total of 10 reward per episde. 
+        1 for pushing the object to the goal and 9 for completing the task.
+        Reward is normalized by the initial distance.
+        """
         if self._simulation:
             self.last_obj_position = self.current_obj_position
             self.current_obj_position = self.get_current_position()
@@ -52,6 +57,9 @@ class MoveObjectToTarget(Task):
                 reward = (d_last - d_current)/self.total_distance
                 # reward = d_current
             done = d_current<0.04
+
+        if done:
+            reward += 9
         return reward, done
 
     def initialize_task(self):
