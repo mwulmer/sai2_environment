@@ -145,7 +145,7 @@ class CameraHandler:
                     self.distance_buffer.append(self.distance_buffer[-1])
 
             #Reward Camera
-            reward_frames = self.reward_pipeline.wait_for_frames()
+            reward_frames = self.reward_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
             reward_aligned_frames = self.reward_align.process(reward_frames)
             reward_color_frame = np.asanyarray(reward_aligned_frames.get_color_frame().get_data())
             reward_depth_frame = reward_frames.get_depth_frame()
@@ -341,15 +341,15 @@ class CameraHandler:
                     self.camera_flag = 1
                     markerIds_temp = markerIds
                     markerCorners_temp = markerCorners       
-            elif reward_color is not None:
-                markerCorners_reward, markerIds_reward, rejectedCandidates_reward = cv2.aruco.detectMarkers(
-                    reward_color, self.dictionary, parameters=self.parameters)
-                if markerIds_reward is not None:
-                    if 0 in markerIds_reward or 1 in markerIds_reward:
-                        depth_frame = self.reward_depth_frame
-                        markerIds_temp = markerIds_reward
-                        markerCorners_temp = markerCorners_reward
-                        self.camera_flag = 2
+        if reward_color is not None:
+            markerCorners_reward, markerIds_reward, rejectedCandidates_reward = cv2.aruco.detectMarkers(
+                reward_color, self.dictionary, parameters=self.parameters)
+            if markerIds_reward is not None:
+                if 0 in markerIds_reward or 1 in markerIds_reward:
+                    depth_frame = self.reward_depth_frame
+                    markerIds_temp = markerIds_reward
+                    markerCorners_temp = markerCorners_reward
+                    self.camera_flag = 2
 
         print(markerIds_temp)
 
@@ -577,27 +577,27 @@ if __name__ == '__main__':
     #         cv2.destroyAllWindows()
     #         break
 
-    # count = 2000
-    # dis = []
-    # while(count != 0):
-    #     time.sleep(0.01)
-    #     print(camera_handler.grab_distance())
-    #     # print(ch.get_current_obj())
-    #     dis.append(camera_handler.grab_distance())
-    #     count = count - 1
+    count = 2000
+    dis = []
+    while(count != 0):
+        time.sleep(0.01)
+        print(camera_handler.grab_distance())
+        # print(ch.get_current_obj())
+        dis.append(camera_handler.grab_distance())
+        count = count - 1
 
-    # data_size = len(dis)
-    # axis = np.arange(0, 2000, 1)
-    # lablesize = 18
-    # fontsize = 16
-    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    # plt.xlabel('Count', fontsize=lablesize)
-    # plt.ylabel('Distance[m]', fontsize=lablesize)
-    # # plt.xticks(fontsize=fontsize)
-    # # plt.yticks(fontsize=fontsize)
-    # # plt.legend(loc='lower right',fontsize=18)
-    # plt.grid(ls='--')
-    # plt.show()
+    data_size = len(dis)
+    axis = np.arange(0, 2000, 1)
+    lablesize = 18
+    fontsize = 16
+    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    plt.xlabel('Count', fontsize=lablesize)
+    plt.ylabel('Distance[m]', fontsize=lablesize)
+    # plt.xticks(fontsize=fontsize)
+    # plt.yticks(fontsize=fontsize)
+    # plt.legend(loc='lower right',fontsize=18)
+    plt.grid(ls='--')
+    plt.show()
 
     # test average time to get distance
     # count = 0
