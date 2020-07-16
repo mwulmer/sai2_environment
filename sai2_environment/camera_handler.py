@@ -33,7 +33,7 @@ class CameraHandler:
             # find the id via devices = rs.context().query_devices()
             #devices[0], devices[1]
             if device_id is None:
-                self.device_id = "828112071102"  # Lab: "828112071102"  Home:"829212070352"
+                self.device_id =  "828112071102" # observation: "828112071102"   "829212070352"robot right  "943222073921" robot_left
                 self.reward_devices_id = "943222073921"
             else:
                 self.device_id = device_id
@@ -55,6 +55,8 @@ class CameraHandler:
                 rs.stream.color, 640, 480, rs.format.bgr8, 60)
 
             self.reward_frame = None
+            self.reward_depth_frame = None
+            self.flag_camera = 1
 
             self.color_image = None
             self.color_frame = None
@@ -102,7 +104,9 @@ class CameraHandler:
         self.align = rs.align(align_to)
 
         #start Reward Camera
-        self.reward_pipeline.start(self.reward_config)
+        reward_profile = self.reward_pipeline.start(self.reward_config)
+        reward_align_to = rs.stream.color
+        self.reward_align = rs.align(reward_align_to)
 
 
         while True:
@@ -130,26 +134,27 @@ class CameraHandler:
                 self.distance_buffer.append(self.distance_buffer[-1])
 
             if (distance_temp != 1):
-                if (distance_temp < 0.5):
+                if (distance_temp < 0.4):
                     self.distance_buffer.append(distance_temp)
                 else:
                     self.distance_buffer.append(self.distance_buffer[-1])
 
             #Reward Camera
-            reward_frames = self.reward_pipeline.wait_for_frames()
-            reward_color_frame = reward_frames.get_color_frame()
-            reward_depth_frame = reward_frames.get_depth_frame()
+            reward_frames = self.reward_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
+            reward_aligned_frames = self.reward_align.process(reward_frames)
+            reward_color_frame = np.asanyarray(reward_aligned_frames.get_color_frame().get_data())
+            reward_depth_frame = reward_aligned_frames.get_depth_frame()
 
-            self.reward_frame = np.asarray(reward_color_frame.get_data())
-
+            self.reward_frame = reward_color_frame
+            self.reward_depth_frame = reward_aligned_frames.get_depth_frame()
             
 
-            # if self.color_image is not None:
-            #     cv2.imshow('RealSense',self.color_image)
-            # key = cv2.waitKey(1)
-            # if key & 0xFF == ord('q') or key == 27:
-            #     cv2.destroyAllWindows()
-            #     break
+            cv2.imshow('Observation',self.color_frame )
+            cv2.imshow('Reward', self.reward_frame)
+            key = cv2.waitKey(1)
+            if key & 0xFF == ord('q') or key == 27:
+                cv2.destroyAllWindows()
+                break
 
     # Capture current frame  (like shooting a picture)
     def _capture(self):
@@ -304,93 +309,102 @@ class CameraHandler:
         # color_image,depth_image,depth_frame,color_frame=self._capture()
 
         # Option 2: Camera start_pipeline runs in the background and get frame each time
-        color_image = self.color_image
-        depth_frame = self.depth_frame
-        color_frame = self.color_frame
+
+        if self.flag_camera == 0:
+            color_image = self.color_image
+            depth_frame = self.depth_frame
+
+        if self.flag_camera == 1:
+            color_image = self.reward_frame
+            depth_frame = self.reward_depth_frame
 
         # Aruco marker part
+        aruco_list = {}
+        # centre= {}
+        result_center = {}
+        # orient_centre= {}
         # Detect the markers in the image
         if color_image is not None:
             markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(
                 color_image, self.dictionary, parameters=self.parameters)
 
-        aruco_list = {}
-        # centre= {}
-        result_center = {}
-        # orient_centre= {}
-        if markerIds is not None:
-            # Print corners and ids to the console
-            # result=zip(markerIds, markerCorners)
-            for k in range(len(markerCorners)):
-                temp_1 = markerCorners[k]
-                temp_1 = temp_1[0]
-                temp_2 = markerIds[k]
-                temp_2 = temp_2[0]
-                aruco_list[temp_2] = temp_1
-            key_list = aruco_list.keys()
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            # print(key_list)
-            for key in key_list:
-                dict_entry = aruco_list[key]
-                centre = dict_entry[0] + dict_entry[1] + \
-                    dict_entry[2] + dict_entry[3]
-                centre[:] = [int(x / 4) for x in centre]
-                centre = tuple(centre)
-                result_center[key] = centre
 
-        try:
-            point_obj = None
-            if result_center.get(0) != None:
-                x_id0 = result_center[0][0]
-                y_id0 = result_center[0][1]
-                p_0 = [x_id0, y_id0]
-                # Deproject pixel to 3D point
-                point_obj = self.pixel2point(self.depth_frame, p_0)
-            if result_center.get(1) != None:
-                x_id1 = result_center[1][0]
-                y_id1 = result_center[1][1]
-                p_1 = [x_id1, y_id1]
-                # Deproject pixel to 3D point
-                point_obj = self.pixel2point(self.depth_frame, p_1)
+            if markerIds is not None:
+                # Print corners and ids to the console
+                # result=zip(markerIds, markerCorners)
+                for k in range(len(markerCorners)):
+                    temp_1 = markerCorners[k]
+                    temp_1 = temp_1[0]
+                    temp_2 = markerIds[k]
+                    temp_2 = temp_2[0]
+                    aruco_list[temp_2] = temp_1
+                key_list = aruco_list.keys()
+                font = cv2.FONT_HERSHEY_SIMPLEX
 
-            if(result_center.get(5) != None):
-                x_id5 = result_center[5][0]
-                y_id5 = result_center[5][1]
-                p_5 = [x_id5, y_id5]
-                # Deproject pixel to 3D point
-                point_5 = self.pixel2point(self.depth_frame, p_5)
+                # print(key_list)
+                for key in key_list:
+                    dict_entry = aruco_list[key]
+                    centre = dict_entry[0] + dict_entry[1] + dict_entry[2] + dict_entry[3]
+                    # width_pixel = dict_entry[]
+                    # length_pixel = dict_entry[]
+                    centre[:] = [int(x / 4) for x in centre]
+                    centre = tuple(centre)
+                    result_center[key] = centre
+            # print(result_center)
 
-            # Dual ID-4 and ID-3
-            if(result_center.get(4) != None):
-                x_id4 = result_center[4][0]
-                y_id4 = result_center[4][1]
-                p_4 = [x_id4, y_id4]
-                # Deproject pixel to 3D point
-                point_4 = self.pixel2point(self.depth_frame, p_4)
+            try:
+                point_obj = None
+                if result_center.get(0) != None:
+                    x_id0 = result_center[0][0]
+                    y_id0 = result_center[0][1]
+                    p_0 = [x_id0, y_id0]
+                    # Deproject pixel to 3D point
+                    point_obj = self.pixel2point(depth_frame, p_0)
+                if result_center.get(1) != None:
+                    x_id1 = result_center[1][0]
+                    y_id1 = result_center[1][1]
+                    p_1 = [x_id1, y_id1]
+                    # Deproject pixel to 3D point
+                    point_obj = self.pixel2point(depth_frame, p_1)
 
-            if(result_center.get(3) != None):
-                x_id3 = result_center[3][0]
-                y_id3 = result_center[3][1]
-                p_3 = [x_id3, y_id3]
-                # Deproject pixel to 3D point
-                point_3 = self.pixel2point(self.depth_frame, p_3)
+                if(result_center.get(5) != None):
+                    x_id5 = result_center[5][0]
+                    y_id5 = result_center[5][1]
+                    p_5 = [x_id5, y_id5]
+                    # Deproject pixel to 3D point
+                    point_5 = self.pixel2point(depth_frame, p_5)
 
-            # Calculate target point
-            if (result_center.get(5) != None and result_center.get(4) != None and result_center.get(3) != None):
-                point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
-                                point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
+                # Dual ID-4 and ID-3
+                if(result_center.get(4) != None):
+                    x_id4 = result_center[4][0]
+                    y_id4 = result_center[4][1]
+                    p_4 = [x_id4, y_id4]
+                    # Deproject pixel to 3D point
+                    point_4 = self.pixel2point(depth_frame, p_4)
 
-                # store the goal position
-                self.goal_position = point_target
-                old_goal = point_target
+                if(result_center.get(3) != None):
+                    x_id3 = result_center[3][0]
+                    y_id3 = result_center[3][1]
+                    p_3 = [x_id3, y_id3]
+                    # Deproject pixel to 3D point
+                    point_3 = self.pixel2point(depth_frame, p_3)
 
-            # store the obj position
-            self.obj_position = point_obj
-            old_obj = point_obj
+                # Calculate target point
+                if (result_center.get(5) != None and result_center.get(4) != None and result_center.get(3) != None):
+                    point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
+                                    point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
 
-        except KeyError:
-            self.obj_position = old_obj
-            self.goal_position = old_goal
+                    # store the goal position
+                    self.goal_position = point_target
+                    old_goal = point_target
+
+                # store the obj position
+                self.obj_position = point_obj
+                old_obj = point_obj
+
+            except KeyError:
+                self.obj_position = old_obj
+                self.goal_position = old_goal
 
         return result_center
 
@@ -405,6 +419,13 @@ class CameraHandler:
                 # print("No enough markers detected for distance computation")
                 return 1
         old_value = 1
+
+        if self.flag_camera == 0:
+            depth_frame = self.depth_frame
+        if self.flag_camera == 1:
+            depth_frame = self.reward_depth_frame
+
+
         try:
             # Moving object localization marker
             if (temp.get(0) != None):
@@ -412,14 +433,14 @@ class CameraHandler:
                 y_id0 = temp[0][1]
                 p_0 = [x_id0, y_id0]
                 # Deproject pixel to 3D point
-                point_0 = self.pixel2point(self.depth_frame, p_0)
+                point_0 = self.pixel2point(depth_frame, p_0)
 
             if (temp.get(1) != None):
                 x_id1 = temp[1][0]
                 y_id1 = temp[1][1]
                 p_1 = [x_id1, y_id1]
                 # Deproject pixel to 3D point
-                point_1 = self.pixel2point(self.depth_frame, p_1)
+                point_1 = self.pixel2point(depth_frame, p_1)
 
             point_target = np.array(self.goal_position)
             # Euclidean distance
@@ -432,9 +453,10 @@ class CameraHandler:
                 dis_obj2target_goal = np.linalg.norm(point_target-point_temp)
             if (temp.get(0) != None and temp.get(1) == None):
                 # dis_obj2target = self.distance_3dpoints(point_0, point_target)
-                # dis_obj2target_goal = dis_obj2target #*np.sin(np.arccos(0.02/dis_obj2target))
+                dis_obj2target = np.linalg.norm(point_target-point_0)
+                dis_obj2target_goal = dis_obj2target*np.sin(np.arccos(0.02/dis_obj2target))
                 point_0 = np.array(point_0)
-                dis_obj2target_goal = np.linalg.norm(point_target-point_0)
+                
             if (temp.get(0) == None and temp.get(1) != None):
                 # dis_obj2target_goal = self.distance_3dpoints(point_1, point_target)
                 point_1 = np.array(point_1)
@@ -449,14 +471,30 @@ class CameraHandler:
 
     def pixel2point(self, frame, u):
 
-        u_x = u[0]
-        u_y = u[1]
+        u_x = int(u[0])
+        u_y = int(u[1])
         # Get depth from pixels
         dis2cam_u = frame.get_distance(u_x, u_y)
+        dis2cam_u_alongx = 0
+        dis2cam_u_alongy = 0
+        # Make the depth value stable use more pixels
+        # along x axis
+        for i in range (1,6):
+            dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x+i, u_y)
+            dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x-i, u_y)
+        # along x axis
+        for i in range (1,6):
+            dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y+i)
+            dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y-i)
+        
+        sum_depth = dis2cam_u_alongx + dis2cam_u_alongy + dis2cam_u
+
+        depth_average = sum_depth / 21
+                    
         # Convert pixels to 3D coordinates in camera frame(deprojection)
         depth_intrin = frame.profile.as_video_stream_profile().intrinsics
         u_pos = rs.rs2_deproject_pixel_to_point(
-            depth_intrin, [u_x, u_y], dis2cam_u)
+            depth_intrin, [u_x, u_y], depth_average)
 
         return u_pos
 
@@ -508,37 +546,37 @@ if __name__ == '__main__':
     # time needed for camera to warm up to continue getting frames (When running the camera in the background)
     time.sleep(2)
 
-    while True:
-        color_frame = camera_handler.color_frame
-        reward_frame = camera_handler.reward_frame
-        cv2.imshow('Observation',color_frame)
-        cv2.imshow('Reward', reward_frame)
-        key = cv2.waitKey(1)
-        if key & 0xFF == ord('q') or key == 27:
-            cv2.destroyAllWindows()
-            break
+    # while True:
+    #     color_frame = camera_handler.color_frame
+    #     reward_frame = camera_handler.reward_frame
+    #     cv2.imshow('Observation',color_frame)
+    #     cv2.imshow('Reward', reward_frame)
+    #     key = cv2.waitKey(1)
+    #     if key & 0xFF == ord('q') or key == 27:
+    #         cv2.destroyAllWindows()
+    #         break
 
-    # count = 2000
-    # dis = []
-    # while(count != 0):
-    #     time.sleep(0.01)
-    #     print(ch.grab_distance())
-    #     # print(ch.get_current_obj())
-    #     dis.append(ch.grab_distance())
-    #     count = count - 1
+    count = 2000
+    dis = []
+    while(count != 0):
+        time.sleep(0.01)
+        print(camera_handler.grab_distance())
+        # print(ch.get_current_obj())
+        dis.append(camera_handler.grab_distance())
+        count = count - 1
 
-    # data_size = len(dis)
-    # axis = np.arange(0, 2000, 1)
-    # lablesize = 18
-    # fontsize = 16
-    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    # plt.xlabel('Count', fontsize=lablesize)
-    # plt.ylabel('Distance[m]', fontsize=lablesize)
-    # # plt.xticks(fontsize=fontsize)
-    # # plt.yticks(fontsize=fontsize)
-    # # plt.legend(loc='lower right',fontsize=18)
-    # plt.grid(ls='--')
-    # plt.show()
+    data_size = len(dis)
+    axis = np.arange(0, 2000, 1)
+    lablesize = 18
+    fontsize = 16
+    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    plt.xlabel('Count', fontsize=lablesize)
+    plt.ylabel('Distance[m]', fontsize=lablesize)
+    # plt.xticks(fontsize=fontsize)
+    # plt.yticks(fontsize=fontsize)
+    # plt.legend(loc='lower right',fontsize=18)
+    plt.grid(ls='--')
+    plt.show()
 
     # test average time to get distance
     # count = 0
