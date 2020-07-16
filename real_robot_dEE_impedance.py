@@ -16,7 +16,7 @@ def main():
                    simulation=False,
                    action_space=action_space,
                    action_frequency=20,
-                   camera_available=True,
+                   camera_available=False,
                    rotation_axis=(0, 0, 0))    
 
     episodes = 20
@@ -36,18 +36,7 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
-            im = obs[0]
-            if reward != 0.0:
-                print(reward)
-            writer.add_scalar("reward", reward, step)
-            if im is not None:
-                im = np.rollaxis(im, 0, 3)
-                cv2.imshow('RealSense',im)
-            key = cv2.waitKey(1)
-            if key & 0xFF == ord('q') or key == 27:
-                cv2.destroyAllWindows()
-                break
-
+            
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
 

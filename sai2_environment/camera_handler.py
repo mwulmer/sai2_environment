@@ -33,7 +33,7 @@ class CameraHandler:
             # find the id via devices = rs.context().query_devices()
             #devices[0], devices[1]
             if device_id is None:
-                self.device_id = "828112071102"  # Lab: "828112071102"  Home:"829212070352"
+                self.device_id = "829212070352" # observation: "828112071102"   "829212070352"robot right  "943222073921" robot_left
                 self.reward_devices_id = "943222073921"
             else:
                 self.device_id = device_id
@@ -319,11 +319,9 @@ class CameraHandler:
         # Option 2: Camera start_pipeline runs in the background and get frame each time
         color_image = self.color_image
         # depth_frame = self.depth_frame
-        color_frame = self.color_frame
 
         # Add new camera for detection
         reward_color = self.reward_frame
-        reward_depth = self.reward_depth_frame
 
         # Aruco marker part
         # Detect the markers in the image
@@ -336,7 +334,7 @@ class CameraHandler:
             markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(
                 color_image, self.dictionary, parameters=self.parameters)
             if markerIds is not None:
-                if 0 in markerIds or 1 in markerIds:
+                if 0 in markerIds:
                     depth_frame = self.depth_frame
                     self.camera_flag = 1
                     markerIds_temp = markerIds
@@ -345,13 +343,13 @@ class CameraHandler:
             markerCorners_reward, markerIds_reward, rejectedCandidates_reward = cv2.aruco.detectMarkers(
                 reward_color, self.dictionary, parameters=self.parameters)
             if markerIds_reward is not None:
-                if 0 in markerIds_reward or 1 in markerIds_reward:
+                if 0 in markerIds_reward:
                     depth_frame = self.reward_depth_frame
                     markerIds_temp = markerIds_reward
                     markerCorners_temp = markerCorners_reward
                     self.camera_flag = 2
 
-        print(markerIds_temp)
+        # print(markerIds_temp)
 
         aruco_list = {}
         # centre= {}
@@ -370,12 +368,12 @@ class CameraHandler:
             # print(key_list)
             for key in key_list:
                 dict_entry = aruco_list[key]
-                centre = dict_entry[0] + dict_entry[1] + \
-                    dict_entry[2] + dict_entry[3]
+                centre = dict_entry[0] + dict_entry[1] + dict_entry[2] + dict_entry[3]
                 centre[:] = [int(x / 4) for x in centre]
                 centre = tuple(centre)
                 result_center[key] = centre
 
+        # print(result_center)
         try:
             point_obj = None
             point_target = None
@@ -434,6 +432,8 @@ class CameraHandler:
                 # store the obj position
                 self.obj_position_reward  = point_obj
                 old_obj_reward  = point_obj
+            
+            # print (self.goal_position_reward)
 
 
         except KeyError:
@@ -448,17 +448,24 @@ class CameraHandler:
         # TODO more robust
         start_time = time.time()
         temp = self.get_marker_position()
-        while (self.obj_position == None or self.goal_position == None):
+        if self.camera_flag == 1:
+            depth_frame = self.depth_frame
+            obj_position = self.obj_position
+            goal_position = self.goal_position 
+        elif self.camera_flag == 2:
+            depth_frame = self.reward_depth_frame
+            obj_position = self.goal_position_reward
+            goal_position = self.goal_position_reward
+
+        while ( obj_position== None or goal_position == None):
             temp = self.get_marker_position()
             end = time.time()
             if(end-start_time > 0.005):
                 # print("No enough markers detected for distance computation")
                 return 1
         old_value = 1
-        if self.camera_flag == 1:
-            depth_frame = self.depth_frame
-        elif self.camera_flag == 2:
-            depth_frame = self.reward_depth_frame
+
+        
         try:
             # Moving object localization marker
             if (temp.get(0) != None):
@@ -480,6 +487,7 @@ class CameraHandler:
             if self.camera_flag == 2:
                 point_target = np.array(self.goal_position_reward)
 
+            # print (point_target)
             
             # Euclidean distance
             # dis_obj2target_goal=0
@@ -498,12 +506,14 @@ class CameraHandler:
                 # dis_obj2target_goal = self.distance_3dpoints(point_1, point_target)
                 point_1 = np.array(point_1)
                 dis_obj2target_goal = np.linalg.norm(point_target-point_1)
-
+            
             old_value = dis_obj2target_goal
+            # print (dis_obj2target_goal)
+            
             return dis_obj2target_goal
 
         except KeyError:
-            # print("Keyerror!!!")
+            print("Keyerror!!!")
             return old_value
 
     def pixel2point(self, frame, u):
@@ -580,7 +590,7 @@ if __name__ == '__main__':
     count = 2000
     dis = []
     while(count != 0):
-        time.sleep(0.01)
+        time.sleep(0.001)
         print(camera_handler.grab_distance())
         # print(ch.get_current_obj())
         dis.append(camera_handler.grab_distance())
