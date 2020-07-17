@@ -12,10 +12,10 @@ class RedisClient(object):
         self._hostname = self._config['hostname']
         self._port = self._config['port']
         self._camera_resolution = self._config['camera_resolution']
-        self._sim = self._config['simulation']
+        self._simulation = self._config['simulation']
 
         self._conn = None
-        self.keys = RedisKeys(self._sim)
+        self.keys = RedisKeys(self._simulation)
 
         self._action_space = None
         self._action_space_size = None
@@ -44,8 +44,18 @@ class RedisClient(object):
         frame = np.flip((np.dstack((r, g, b))).astype(np.uint8), 0)
         return frame
 
-    def get_contact_occurence(self):
-        return self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
+    def get_sensed_contact(self):
+        #currently the simulator returns (1,) and real robot returns (7,)
+        sensed_contact = self.redis2array(self.get(self.keys.SENSED_CONTACT_KEY))
+        if not self._simulation:
+            sensed_contact = sensed_contact.any()
+        return sensed_contact
+
+
+    def get_torques(self):
+        return self.redis2array(self.get(
+            self.keys.JOINT_TORQUES_COMMANDED_KEY))
+
 
     def get_robot_state(self) -> np.array:
         q = self.redis2array(self.get(self.keys.JOINT_ANGLES_KEY))
@@ -105,6 +115,7 @@ class RedisClient(object):
                 time.sleep(0.1)
                 simulator_reset = int(
                     self.get(self.keys.HARD_RESET_SIMULATOR_KEY).decode()) == 0   
+
 
         return True
 

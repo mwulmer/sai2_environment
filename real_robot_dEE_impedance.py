@@ -21,7 +21,7 @@ def main():
                    rotation_axis=(0, 0, 0))    
 
     episodes = 20
-    steps = 1000
+    steps = 200
 
     start_time = time.time()    
 

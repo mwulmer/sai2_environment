@@ -5,7 +5,7 @@ import threading
 import time
 from collections import deque
 import matplotlib.pyplot as plt
-
+import threading
 
 class CameraHandler:
 
