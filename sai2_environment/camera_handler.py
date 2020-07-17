@@ -38,7 +38,7 @@ class CameraHandler:
             self.config.enable_stream(
                 rs.stream.depth, 640, 480, rs.format.z16, 60)
             self.config.enable_stream(
-                rs.stream.color, 640, 480, rs.format.bgr8, 60)
+                rs.stream.color, 640, 480, rs.format.bgr8, 60)            
 
             self.color_image = None
             self.color_frame = None
@@ -61,6 +61,8 @@ class CameraHandler:
 
             # Initialize the detector parameters using default values
             self.parameters = cv2.aruco.DetectorParameters_create()
+
+            self.camera_thread = threading.Thread(name="camera_thread", target= self.start_pipeline)
 
     def get_color_frame(self):
         return self.color_buffer[-1]

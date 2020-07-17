@@ -75,13 +75,12 @@ class RobotEnv(object):
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
                          np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
         
-        self.camera_thread = threading.Thread(name="camera_thread", target= self.camera_handler.start_pipeline)
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
 
         if not self.env_config["simulation"]:
             self.contact_thread.start()
             if self.camera_available:
-                self.camera_thread.start()
+                self.camera_handler.camera_thread.start()
         #ẃarm up camera
         time.sleep(1)
 
