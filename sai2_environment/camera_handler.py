@@ -148,16 +148,12 @@ class CameraHandler:
             reward_frames = self.reward_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
             reward_aligned_frames = self.reward_align.process(reward_frames)
             reward_color_frame = np.asanyarray(reward_aligned_frames.get_color_frame().get_data())
-            reward_depth_frame = reward_frames.get_depth_frame()
 
             self.reward_frame = reward_color_frame
             self.reward_depth_frame = reward_aligned_frames.get_depth_frame()
-            #np.asarray(reward_color_frame.get_data())
-
-            
 
             if self.color_image is not None:
-                cv2.imshow('RealSense',self.color_image)
+                cv2.imshow('Observation',self.color_image)
                 cv2.imshow('Reward', self.reward_frame)
             key = cv2.waitKey(1)
             if key & 0xFF == ord('q') or key == 27:
@@ -418,17 +414,37 @@ class CameraHandler:
                                 point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
 
             
+            # Transformation between two cameras
+            # left_R_right = 
+            # left_T_right =  
+            
             if self.camera_flag == 1:
                 # store the goal position
                 self.goal_position = point_target
                 old_goal = point_target
+                
+                # share the goal position with the other camera
+                # self.goal_position = np.array(point_target)
+                # self.goal_position_reward = R * self.goal_position + T
+                
+                
                 # store the obj position
                 self.obj_position = point_obj
                 old_obj = point_obj
+            
             if self.camera_flag == 2:
                 # store the goal position
                 self.goal_position_reward = point_target
                 old_goal_reward  = point_target
+
+
+                # share the goal position with the other camera
+                # self.goal_position_reward = np.array(point_target)
+                # self.goal_position = R.T * self.goal_position - R.T*T
+                
+                
+                
+                
                 # store the obj position
                 self.obj_position_reward  = point_obj
                 old_obj_reward  = point_obj
