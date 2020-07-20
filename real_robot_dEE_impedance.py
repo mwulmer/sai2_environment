@@ -14,7 +14,7 @@ def main():
     render = False
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=True,
+                   simulation=False,
                    action_space=action_space,
                    action_frequency=20,
                    camera_available=True,
@@ -36,15 +36,15 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
-            if render:
-                im = obs[0]
-                if im is not None:
-                    im = np.rollaxis(im, 0, 3)
-                    cv2.imshow('RealSense',im)
-                key = cv2.waitKey(1)
-                if key & 0xFF == ord('q') or key == 27:
-                    cv2.destroyAllWindows()
-                    break
+            # if render:
+            #     im = obs[0]
+            #     if im is not None:
+            #         im = np.rollaxis(im, 0, 3)
+            #         cv2.imshow('RealSense',im)
+            #     key = cv2.waitKey(1)
+            #     if key & 0xFF == ord('q') or key == 27:
+            #         cv2.destroyAllWindows()
+            #         break
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
