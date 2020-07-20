@@ -58,26 +58,31 @@ class RobotEnv(object):
         #self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
         self._client.init_action_space(self._robot_action)
-        self._episodes = 0
-        print(self._client.get_robot_state().shape)
-        self.observation_space = {
-            "state": self._client.get_robot_state().shape,
-            "center": (3, 128, 128)
-        }
+        self._episodes = 0        
 
         self.action_space = self._robot_action.action_space
-        self.contact_event = False
         self.haptic_handler = HapticHandler.getInstance(
             self._client, simulation, sensor_frequency=1000)
         self.camera_handler = CameraHandler.getInstance(
             self.env_config['camera_resolution'])
 
-        self.scaler = RobotMinMaxScaler()        
+        self.scaler = RobotMinMaxScaler()
 
         if not self.env_config["simulation"] and self.camera_available:
             self.camera_handler.camera_thread.start()
         # ẃarm up camera
         time.sleep(1)
+
+        cam, proprio, haptic = self._get_obs()
+        self.observation_space = {
+            "camera": cam.shape,
+            "proprioception": (proprio[0].shape, proprio[1].shape),
+            "haptic": (haptic[0].shape, haptic[1].shape)
+        }
+        # self.observation_space = {
+        #     "state": self._client.get_robot_state().shape,
+        #     "center": (3, 128, 128)
+        # }
 
         # TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
@@ -100,9 +105,6 @@ class RobotEnv(object):
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)/255.0
-
-    def get_normalized_robot_state(self):
-        return self.scaler.transform([self._client.get_robot_state()])
 
     def rotvec_to_quaternion(self, vec):
         quat = Rot.from_euler('zyx', vec).as_quat()
@@ -142,9 +144,7 @@ class RobotEnv(object):
 
         #print("Reward: {}".format(reward))
         info = None
-        obs = self._get_obs()  # has to be before the contact reset \!/
-        #print("end of step, contact happened = ", self.contact_event)
-        self.contact_event = False
+        obs = self._get_obs()  # has to be before the contact reset \!/        
         return obs, reward, done, info
 
     def take_action(self, action):
@@ -162,22 +162,28 @@ class RobotEnv(object):
 
     def _get_obs(self):
         """
-        camera_frame im=(128,128)
-        robot_state (q,dq, tau_matrix, contact)=(((7,),(7,)),(7,n),1)
+        camera_frame: im = (128,128)
+        robot_state: (q,dq) = ((7,), (7,))
+        haptic_feedback: (tau, contact) = ((7,n), (1,))
         """
         if self.env_config['simulation']:
             camera_frame = self.convert_image(self._client.get_camera_frame())
         else:
             camera_frame = self.convert_image(
                 self.camera_handler.get_color_frame()) if self.camera_available else 0
-        #retrieve robot state and sensor infos
-        q, dq = self._client.get_robot_state()
+        # retrieve robot state
+        q, dq = self._client.get_robot_state()        
+        # normalize proprioception
+        q = self.scaler.q_scaler.transform([q])[0]
+        dq = self.scaler.dq_scaler.transform([dq])[0]
+
+        #retrieve haptics
         tau = self.haptic_handler.get_torques_matrix(n=32)
         contact = self.haptic_handler.contact_occured()
-        #normalize   
-        q = self.scaler.q_scaler.fit(q)
-        dq = self.scaler.dq_scaler.fit(dq)
-        tau = self.scaler.tau_scaler.fit(tau)       
-        normalized_robot_state = (q, dq, tau, contact)
+        #normalize haptics
+        tau = self.scaler.tau_scaler.transform(tau)
 
-        return camera_frame, normalized_robot_state
+        normalized_robot_state = (q, dq)
+        normalized_haptic_feedback = (tau, contact)
+
+        return camera_frame, normalized_robot_state, normalized_haptic_feedback

@@ -14,12 +14,17 @@ class HapticHandler:
         return HapticHandler.__instance
 
     def __init__(self, client, simulation, sensor_frequency=1000):
+        if HapticHandler.__instance != None:
+            raise Exception("This class: CameraHandler is a singleton!")
+        else:
+            HapticHandler.__instance = self
         self.client = client
         self.sensor_frequency = sensor_frequency
         self.haptic_thread = threading.Thread(
             name="haptic_thread", target=self.get_haptic_feedback)
         self.haptic_thread.start()
-        self.torque_measurements = deque(maxlen=50)
+        self.torque_measurements = deque(maxlen=100)
+
         self.contact_event = False
 
     def get_haptic_feedback(self):
@@ -28,7 +33,8 @@ class HapticHandler:
             while True:
                 timer.wait_for_next_loop()
                 # read sensed contact
-                self.contact_event = self.client.get_sensed_contact()
+                if not self.contact_event:
+                    self.contact_event = self.client.get_sensed_contact()
 
                 # readtorques
                 tau = self.client.get_torques()
@@ -43,7 +49,7 @@ class HapticHandler:
             #print("contact=", contact)
 
     def get_torques_matrix(self, n=32):
-        return self.torque_measurements[-n:]
+        return np.asarray([self.torque_measurements.pop() for i in range(n)])
 
     def contact_occured(self):
         #check if contact occured since the last time the function was called
