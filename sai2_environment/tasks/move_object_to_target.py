@@ -9,10 +9,11 @@ class MoveObjectToTarget(Task):
         self.camera_handler = camera_handler
         self.TARGET_OBJ_POSITION_KEY  = "sai2::ReinforcementLearning::move_object_to_target::object_position"
         self.GOAL_POSITION_KEY  = "sai2::ReinforcementLearning::move_object_to_target::goal_position"
+        self.CURRENT_POS_KEY = "sai2::ReinforcementLearning::current_position";
 
         if simulation:
             self.goal_position = self._client.redis2array(self._client.get(self.GOAL_POSITION_KEY))
-            self.current_obj_position = self.get_current_position()
+            self.current_obj_position = self.get_puck_position()
             self.last_obj_position = self.current_obj_position
             self.total_distance = self.euclidean_distance(self.goal_position, self.current_obj_position)
         else:
@@ -35,7 +36,7 @@ class MoveObjectToTarget(Task):
         """
         if self._simulation:
             self.last_obj_position = self.current_obj_position
-            self.current_obj_position = self.get_current_position()
+            self.current_obj_position = self.get_puck_position()
             d0 = self.euclidean_distance(self.goal_position, self.last_obj_position)
             d1 = self.euclidean_distance(self.goal_position, self.current_obj_position)
 
@@ -61,21 +62,26 @@ class MoveObjectToTarget(Task):
         if done:
             reward += 9
         return reward, done
+    
+    def act_optimal(self):
+        puck_pos = self.get_puck_position()
+        ee_pos = self.get_ee_position()
 
     def initialize_task(self):
         if self._simulation:
             self.goal_position = self._client.redis2array(self._client.get(self.GOAL_POSITION_KEY))
-            self.current_obj_position = self.get_current_position()
+            self.current_obj_position = self.get_puck_position()
             self.last_obj_position = self.current_obj_position
             self.total_distance = self.euclidean_distance(self.goal_position, self.current_obj_position)
         else:
             self.total_distance = self.camera_handler.grab_distance()
 
-
-
     def euclidean_distance(self, x1, x2):
         return np.linalg.norm(x1 - x2)
+    
+    def get_ee_position(self):
+        return self._client.redis2array(self._client.get(self.CURRENT_POS_KEY))
 
-    def get_current_position(self):
+    def get_puck_position(self):
         return self._client.redis2array(self._client.get(self.TARGET_OBJ_POSITION_KEY))
 
