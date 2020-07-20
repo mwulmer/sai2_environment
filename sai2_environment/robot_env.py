@@ -148,9 +148,10 @@ class RobotEnv(object):
 
         # non-blocking does not wait and computes reward right away
         else:
-            self.timer.wait_for_next_loop()
 
             self.take_action(action)
+            self.timer.wait_for_next_loop()
+
             reward, done = self._compute_reward()
 
         #print("Reward: {}".format(reward))
