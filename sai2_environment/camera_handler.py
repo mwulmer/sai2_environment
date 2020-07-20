@@ -587,7 +587,7 @@ if __name__ == '__main__':
     #         cv2.destroyAllWindows()
     #         break
 
-    count = 2000
+    count = 20000
     dis = []
     while(count != 0):
         time.sleep(0.001)
@@ -597,7 +597,7 @@ if __name__ == '__main__':
         count = count - 1
 
     data_size = len(dis)
-    axis = np.arange(0, 2000, 1)
+    axis = np.arange(0, 20000, 1)
     lablesize = 18
     fontsize = 16
     plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
