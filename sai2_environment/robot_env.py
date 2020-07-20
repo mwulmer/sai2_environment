@@ -164,6 +164,10 @@ class RobotEnv(object):
     def take_action(self, action):
         return self._client.take_action(action)
 
+    def act_optimally(self):
+        action = self.task.act_optimally()
+        return action
+
     def render(self):
         return None
 

@@ -14,7 +14,7 @@ def main():
     render = False
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=False,
+                   simulation=True,
                    action_space=action_space,
                    action_frequency=20,
                    camera_available=True,
@@ -34,6 +34,8 @@ def main():
             stiffness_linear =  np.random.normal(loc=0.0, scale=10, size=(1,))
             stiffness_rot = np.random.normal(loc=0.0, scale=1, size=(1,))
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
+            action = env.act_optimally()
+            print(action)
 
             obs, reward, done, info = env.step(action)
             # if render:
