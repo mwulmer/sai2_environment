@@ -85,45 +85,48 @@ class CameraHandler:
         profile = self.pipeline.start(self.config)
         align_to = rs.stream.color
         self.align = rs.align(align_to)
-        while True:
-            frames = self.pipeline.wait_for_frames(
-                200 if (self.frame_count > 1) else 10000)  # wait 10 seconds for first frame
-            aligned_frames = self.align.process(frames)
-            depth_frame = aligned_frames.get_depth_frame()
+        try:
+            while True:
+                frames = self.pipeline.wait_for_frames(
+                    200 if (self.frame_count > 1) else 10000)  # wait 10 seconds for first frame
+                aligned_frames = self.align.process(frames)
+                depth_frame = aligned_frames.get_depth_frame()
 
-            self.depth_frame = depth_frame
-            self.__depth_frame = np.asanyarray(depth_frame.get_data())
-            self.depth_buffer.append(self.__depth_frame)
+                self.depth_frame = depth_frame
+                self.__depth_frame = np.asanyarray(depth_frame.get_data())
+                self.depth_buffer.append(self.__depth_frame)
 
-            color_frame = aligned_frames.get_color_frame()
-            self.color_frame = color_frame
+                color_frame = aligned_frames.get_color_frame()
+                self.color_frame = color_frame
 
-            color_frame = np.asanyarray(color_frame.get_data())
-            self.color_image = color_frame
+                color_frame = np.asanyarray(color_frame.get_data())
+                self.color_image = color_frame
 
-            self.__color_frame = cv2.resize(color_frame, self.__resolution)
+                self.__color_frame = cv2.resize(color_frame, self.__resolution)
 
-            self.color_buffer.append(self.__color_frame)
-            
-            # Compute the distance and store them in the buffer
-            distance_temp = self.cal_distance()
-            
-            if (distance_temp==1):
-                self.distance_buffer.append(self.distance_buffer[-1])
-
-
-            if (distance_temp!=1):
-                if (distance_temp<0.5):
-                    self.distance_buffer.append(distance_temp)
-                else:
+                self.color_buffer.append(self.__color_frame)
+                
+                # Compute the distance and store them in the buffer
+                distance_temp = self.cal_distance()
+                
+                if (distance_temp==1):
                     self.distance_buffer.append(self.distance_buffer[-1])
 
-            # if self.color_image is not None:
-            #     cv2.imshow('RealSense',self.color_image)
-            # key = cv2.waitKey(1)
-            # if key & 0xFF == ord('q') or key == 27:
-            #     cv2.destroyAllWindows()
-            #     break
+
+                if (distance_temp!=1):
+                    if (distance_temp<0.5):
+                        self.distance_buffer.append(distance_temp)
+                    else:
+                        self.distance_buffer.append(self.distance_buffer[-1])
+
+                # if self.color_image is not None:
+                #     cv2.imshow('RealSense',self.color_image)
+                # key = cv2.waitKey(1)
+                # if key & 0xFF == ord('q') or key == 27:
+                #     cv2.destroyAllWindows()
+                #     break
+        except KeyboardInterrupt:
+            self.camera_thread.join()
 
     # Capture current frame  (like shooting a picture)
     def _capture(self):
