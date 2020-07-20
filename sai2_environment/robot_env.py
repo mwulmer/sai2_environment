@@ -49,7 +49,6 @@ class RobotEnv(object):
         self._client.connect()
 
         self.timer = Timer(frequency=action_frequency)
-
         self.start_time = time.time()
 
         # set action space to redis
@@ -69,14 +68,15 @@ class RobotEnv(object):
         self.contact_event = False
         self.camera_handler = CameraHandler.getInstance(self.env_config['camera_resolution'])
 
-
-
         self.scaler = MinMaxScaler()
         self.scaler.fit([np.concatenate((Range.q["min"], Range.q_dot["min"], Range.tau["min"], np.zeros(1))), 
                          np.concatenate((Range.q["max"], Range.q_dot["max"], Range.tau["max"], np.ones(1)))])
         
         self.camera_thread = threading.Thread(name="camera_thread", target= self.camera_handler.start_pipeline)
         self.contact_thread = threading.Thread(name="contact_thread", target= self.get_contact)
+
+        if self.env_config["render"]:
+            cv2.namedWindow('Simulator', cv2.WINDOW_NORMAL)
 
         if not self.env_config["simulation"]:
             self.contact_thread.start()
@@ -154,18 +154,18 @@ class RobotEnv(object):
 
             reward, done = self._compute_reward()
 
-        #print("Reward: {}".format(reward))
         info = None
         obs = self._get_obs() # has to be before the contact reset \!/
-        #print("end of step, contact happened = ", self.contact_event)
         self.contact_event = False
         return obs, reward, done, info
 
     def take_action(self, action):
         return self._client.take_action(action)
 
-    def render(self):
-        return None
+    def render(self, img):
+        if self.env_config["render"]:
+            cv2.imshow("Simulator", img)
+            cv2.waitKey(1)
 
     def close(self):
         return 0
@@ -176,9 +176,12 @@ class RobotEnv(object):
 
     def _get_obs(self):
         if self.env_config['simulation']:
-            camera_frame = self.convert_image(self._client.get_camera_frame())
+            img = self._client.get_camera_frame()
+            camera_frame = self.convert_image(img)
             robot_state = self.get_normalized_robot_state()
         else:
-            camera_frame = self.convert_image(self.camera_handler.get_color_frame()) if self.camera_available else 0
+            img = self.camera_handler.get_color_frame()
+            camera_frame = self.convert_image(img) if self.camera_available else 0
             robot_state = self.get_normalized_robot_state()
+        self.render(img)
         return camera_frame, robot_state

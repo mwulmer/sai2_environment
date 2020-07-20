@@ -14,9 +14,10 @@ def main():
     render = False
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=False,
+                   simulation=True,
                    action_space=action_space,
                    action_frequency=20,
+                   render=True,
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
