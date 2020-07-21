@@ -128,7 +128,7 @@ class RobotEnv(object):
 
     def step(self, action):
         assert action.shape == self._robot_action.action_space_size(
-        ), "Action shape not correct, expected shape {}".format(
+        ), "Action shape of {} not correct, expected shape {}".format(action.shape,
             self._robot_action.action_space_size())
         #build the full action if
         action = self._robot_action.build_full_command(action)
