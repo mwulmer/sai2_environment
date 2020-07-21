@@ -127,7 +127,7 @@ class MoveObjectToTarget(Task):
         # go down z again
         a6 = np.array([puck_pos[0]-0.10, 0, 0.05, 0, 0])
         # push towards goal in (0.6,0,0)
-        a7 = np.array([0.66, 0, 0.05, 0, 0])
+        a7 = np.array([0.65, 0, 0.05, 0, 0])
         trajectory = [a1, a2, a3, a4, a5, a6, a7]
 
         return trajectory
