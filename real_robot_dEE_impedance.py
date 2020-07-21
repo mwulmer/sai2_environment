@@ -6,6 +6,8 @@ import numpy as np
 import time
 from PIL import Image
 import cv2
+import matplotlib.pyplot as plt
+from collections import deque
 
 
 def main():
@@ -21,10 +23,11 @@ def main():
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
-    episodes = 20
-    steps = 1000
+    episodes = 2
+    steps = 200
 
-    start_time = time.time()    
+    start_time = time.time()
+    queue = deque()    
 
     for episode in range(episodes):
         
@@ -37,15 +40,6 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
-            # if render:
-            #     im = obs[0]
-            #     if im is not None:
-            #         im = np.rollaxis(im, 0, 3)
-            #         cv2.imshow('RealSense',im)
-            #     key = cv2.waitKey(1)
-            #     if key & 0xFF == ord('q') or key == 27:
-            #         cv2.destroyAllWindows()
-            #         break
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
