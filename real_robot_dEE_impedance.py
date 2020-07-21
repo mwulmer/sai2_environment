@@ -6,6 +6,8 @@ import numpy as np
 import time
 from PIL import Image
 import cv2
+import matplotlib.pyplot as plt
+from collections import deque
 
 
 def main():
@@ -16,14 +18,16 @@ def main():
     env = RobotEnv(name='move_object_to_target',
                    simulation=True,
                    action_space=action_space,
-                   action_frequency=10,
+                   action_frequency=20,
+                   render=True,
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
-    episodes = 20
+    episodes = 2
     steps = 200
 
-    start_time = time.time()    
+    start_time = time.time()
+    queue = deque()    
 
     for episode in range(episodes):
         
@@ -37,6 +41,7 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
             action = env.act_optimally()
 
+<<<<<<< HEAD
             obs, reward, done, info = env.step(action)                       
 
             if done:                
@@ -52,6 +57,9 @@ def main():
             #     if key & 0xFF == ord('q') or key == 27:
             #         cv2.destroyAllWindows()
             #         break
+=======
+            obs, reward, done, info = env.step(action)
+>>>>>>> master
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
