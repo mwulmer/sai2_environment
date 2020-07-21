@@ -49,7 +49,6 @@ class RobotEnv(object):
         self._client.connect()
 
         self.timer = Timer(frequency=action_frequency)
-
         self.start_time = time.time()
 
         # set action space to redis
@@ -61,6 +60,7 @@ class RobotEnv(object):
         self._episodes = 0        
 
         self.action_space = self._robot_action.action_space
+
         self.haptic_handler = HapticHandler.getInstance(
             self._client, simulation, sensor_frequency=1000)
         self.camera_handler = CameraHandler.getInstance(
@@ -71,6 +71,10 @@ class RobotEnv(object):
         if not self.env_config["simulation"] and self.camera_available:
             self.camera_handler.camera_thread.start()
         # ẃarm up camera
+
+        if self.env_config["render"]:
+            cv2.namedWindow('Simulator', cv2.WINDOW_NORMAL)
+
         time.sleep(1)
 
         cam, proprio, haptic = self._get_obs()
@@ -79,10 +83,6 @@ class RobotEnv(object):
             "proprioception": (proprio[0].shape, proprio[1].shape),
             "haptic": (haptic[0].shape, haptic[1].shape)
         }
-        # self.observation_space = {
-        #     "state": self._client.get_robot_state().shape,
-        #     "center": (3, 128, 128)
-        # }
 
         # TODO define what all the responsibilites of task are
         task_class = name_to_task_class(name)
@@ -137,21 +137,24 @@ class RobotEnv(object):
 
         # non-blocking does not wait and computes reward right away
         else:
-            self.timer.wait_for_next_loop()
 
             self.take_action(action)
+            self.timer.wait_for_next_loop()
+
             reward, done = self._compute_reward()
 
-        #print("Reward: {}".format(reward))
         info = None
         obs = self._get_obs()  # has to be before the contact reset \!/        
+
         return obs, reward, done, info
 
     def take_action(self, action):
         return self._client.take_action(action)
 
-    def render(self):
-        return None
+    def render(self, img):
+        if self.env_config["render"]:
+            cv2.imshow("Simulator", img)
+            cv2.waitKey(1)
 
     def close(self):
         return 0
@@ -167,7 +170,8 @@ class RobotEnv(object):
         haptic_feedback: (tau, contact) = ((7,n), (1,))
         """
         if self.env_config['simulation']:
-            camera_frame = self.convert_image(self._client.get_camera_frame())
+            img = self._client.get_camera_frame()
+            camera_frame = self.convert_image(img)
         else:
             camera_frame = self.convert_image(
                 self.camera_handler.get_color_frame()) if self.camera_available else 0
@@ -185,5 +189,6 @@ class RobotEnv(object):
 
         normalized_robot_state = (q, dq)
         normalized_haptic_feedback = (tau, contact)
-
+        self.render(img)
         return camera_frame, normalized_robot_state, normalized_haptic_feedback
+

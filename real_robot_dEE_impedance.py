@@ -19,6 +19,7 @@ def main():
                    simulation=True,
                    action_space=action_space,
                    action_frequency=20,
+                   render=True,
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
@@ -39,11 +40,6 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
- 
-    
-    X = np.asarray(list(queue))
-    print(X)
-            
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
