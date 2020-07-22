@@ -13,7 +13,6 @@ from collections import deque
 def main():
 
     action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
-    render = False
 
     env = RobotEnv(name='move_object_to_target',
                    simulation=True,
@@ -23,8 +22,8 @@ def main():
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
-    episodes = 2
-    steps = 200
+    episodes = 10
+    steps = 500
 
     start_time = time.time()
     queue = deque()    
@@ -41,7 +40,6 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
             action = env.act_optimally()
 
-<<<<<<< HEAD
             obs, reward, done, info = env.step(action)                       
 
             if done:                
@@ -57,9 +55,7 @@ def main():
             #     if key & 0xFF == ord('q') or key == 27:
             #         cv2.destroyAllWindows()
             #         break
-=======
-            obs, reward, done, info = env.step(action)
->>>>>>> master
+        env.close()
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
