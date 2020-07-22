@@ -27,6 +27,7 @@ class RobotEnv(object):
                  isotropic_gains=True,
                  blocking_action=False,
                  action_frequency=20,
+                 torque_seq_length=32,
                  camera_available=True,
                  rotation_axis=(True, True, True)):
 
@@ -42,7 +43,7 @@ class RobotEnv(object):
             'port': 6379,
             'blocking_action': blocking_action,
             'rotation_axis': rotation_axis,
-            'torque_sequence_length': 32
+            'torque_seq_length': torque_seq_length
         }
 
         # connect redis client
@@ -187,7 +188,7 @@ class RobotEnv(object):
         dq = self.scaler.dq_scaler.transform([dq])[0]
 
         #retrieve haptics
-        tau = self.haptic_handler.get_torques_matrix(n=self.env_config["torque_sequence_length"])
+        tau = self.haptic_handler.get_torques_matrix(n=self.env_config["torque_seq_length"])
         contact = np.asarray([self.haptic_handler.contact_occured()])
         #normalize haptics
         tau = self.scaler.tau_scaler.transform(tau)
