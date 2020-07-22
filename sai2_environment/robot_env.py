@@ -41,7 +41,8 @@ class RobotEnv(object):
             'hostname': hostname,
             'port': 6379,
             'blocking_action': blocking_action,
-            'rotation_axis': rotation_axis
+            'rotation_axis': rotation_axis,
+            'torque_sequence_length': 32
         }
 
         # connect redis client
@@ -80,7 +81,7 @@ class RobotEnv(object):
         cam, proprio, haptic = self._get_obs()
         self.observation_space = {
             "camera": cam.shape,
-            "proprioception": (proprio[0].shape, proprio[1].shape),
+            "proprioception": proprio.shape,
             "haptic": (haptic[0].shape, haptic[1].shape)
         }
 
@@ -170,7 +171,7 @@ class RobotEnv(object):
     def _get_obs(self):
         """
         camera_frame: im = (128,128)
-        robot_state: (q,dq) = ((7,), (7,))
+        robot_state: (q,dq) = (14,)
         haptic_feedback: (tau, contact) = ((7,n), (1,))
         """
         if self.env_config['simulation']:
@@ -186,12 +187,12 @@ class RobotEnv(object):
         dq = self.scaler.dq_scaler.transform([dq])[0]
 
         #retrieve haptics
-        tau = self.haptic_handler.get_torques_matrix(n=32)
-        contact = self.haptic_handler.contact_occured()
+        tau = self.haptic_handler.get_torques_matrix(n=self.env_config["torque_sequence_length"])
+        contact = np.asarray([self.haptic_handler.contact_occured()])
         #normalize haptics
         tau = self.scaler.tau_scaler.transform(tau)
 
-        normalized_robot_state = (q, dq)
+        normalized_robot_state = np.concatenate((q, dq))
         normalized_haptic_feedback = (tau, contact)
         self.render(img)
         return camera_frame, normalized_robot_state, normalized_haptic_feedback
