@@ -33,7 +33,7 @@ class RobotEnv(object):
 
         self.camera_available = camera_available
         # connect to redis server
-        hostname = "127.0.0.1" if simulation else "TUEIRSI-NC-008"
+        hostname = "127.0.0.1" if simulation else "TUEIRSI-RL-001"
         self.env_config = {
             'simulation': simulation,
             'render': render,
@@ -179,8 +179,9 @@ class RobotEnv(object):
             img = self._client.get_camera_frame()
             camera_frame = self.convert_image(img)
         else:
-            camera_frame = self.convert_image(
-                self.camera_handler.get_color_frame()) if self.camera_available else 0
+            img = self.camera_handler.get_color_frame() if self.camera_available else 0
+            camera_frame = self.convert_image(img)
+                
         # retrieve robot state
         q, dq = self._client.get_robot_state()        
         # normalize proprioception

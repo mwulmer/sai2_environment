@@ -23,7 +23,9 @@ class HapticHandler:
         self.haptic_thread = threading.Thread(
             name="haptic_thread", target=self.get_haptic_feedback)
         self.haptic_thread.start()
-        self.torque_measurements = deque(maxlen=100)
+        self.torque_measurements = deque(maxlen=200)
+        for i in range(100):
+            self.torque_measurements.append(np.zeros((7,)))
 
         self.contact_event = False
 
@@ -49,6 +51,7 @@ class HapticHandler:
             #print("contact=", contact)
 
     def get_torques_matrix(self, n=32):
+        
         return np.asarray([self.torque_measurements.pop() for i in range(n)])
 
     def contact_occured(self):
