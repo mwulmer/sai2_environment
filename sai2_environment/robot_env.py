@@ -117,7 +117,7 @@ class RobotEnv(object):
 
     def step(self, action):
         assert action.shape == self._robot_action.action_space_size(
-        ), "Action shape not correct, expected shape {}".format(
+        ), "Action shape of {} not correct, expected shape {}".format(action.shape,
             self._robot_action.action_space_size())
         # build the full action if
         action = self._robot_action.build_full_command(action)
@@ -150,6 +150,10 @@ class RobotEnv(object):
 
     def take_action(self, action):
         return self._client.take_action(action)
+
+    def act_optimally(self):
+        action = self.task.act_optimally()
+        return action
 
     def render(self, img):
         if self.env_config["render"]:
