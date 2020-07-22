@@ -193,9 +193,11 @@ class RobotEnv(object):
         contact = np.asarray([self.haptic_handler.contact_occured()])
         #normalize haptics
         tau = self.scaler.tau_scaler.transform(tau)
+        reversed__transposed_tau = np.transpose(tau[::-1])
+        normalized_robot_state = np.concatenate((q, dq))
 
         normalized_robot_state = np.concatenate((q, dq))
-        normalized_haptic_feedback = (tau, contact)
+        normalized_haptic_feedback = (reversed__transposed_tau, contact)
         self.render(img)
         return camera_frame, normalized_robot_state, normalized_haptic_feedback
 

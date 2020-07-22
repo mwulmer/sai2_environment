@@ -12,7 +12,7 @@ class MoveObjectToTarget(Task):
         self._client = redis_client
         self._simulation = simulation
         self.camera_handler = camera_handler
-        self.stage = 0
+        self.traj = []
         self.cumulative_reward = 0
         self.TARGET_OBJ_POSITION_KEY = "sai2::ReinforcementLearning::move_object_to_target::object_position"
         self.GOAL_POSITION_KEY = "sai2::ReinforcementLearning::move_object_to_target::goal_position"
@@ -96,16 +96,17 @@ class MoveObjectToTarget(Task):
         # only works for the moving target action space right now
         desired_pos = self.get_desired_position()
         ee_pos = self.get_ee_position()
-        required_behavior = self.traj[0]
-        required_position = required_behavior[:3]
-        required_stiffness = required_behavior[3:]
-        if (self.euclidean_distance(required_position, ee_pos) > 0.05):
-            action_pos = required_position - desired_pos[:3]
-            #TODO add stiffness
-            action = np.concatenate((action_pos, np.array([0,0])))
-        else:
-            self.traj.pop(0)
-            action = np.array([0, 0, 0, 0, 0])
+        action = np.array([0, 0, 0, 0, 0])
+        if self.traj:
+            required_behavior = self.traj[0]
+            required_position = required_behavior[:3]
+            required_stiffness = required_behavior[3:]
+            if (self.euclidean_distance(required_position, ee_pos) > 0.05):
+                action_pos = required_position - desired_pos[:3]
+                #TODO add stiffness
+                action = np.concatenate((action_pos, np.array([0,0])))
+            else:
+                self.traj.pop(0)
 
         return action
 

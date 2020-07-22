@@ -40,7 +40,7 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
             action = env.act_optimally()
 
-            obs, reward, done, info = env.step(action)                       
+            obs, reward, done, info = env.step(action)  
 
             if done:                
                 obs = env.reset()
