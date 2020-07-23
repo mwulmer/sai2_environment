@@ -33,8 +33,8 @@ class CameraHandler:
             # find the id via devices = rs.context().query_devices()
             #devices[0], devices[1]
             if device_id is None:
-                self.device_id = "829212070352" # observation: "828112071102"   "829212070352"robot right  "943222073921" robot_left
-                self.reward_devices_id = "943222073921"
+                self.device_id =  "943222073921"# observation: "828112071102"   "829212070352"robot right  "943222073921" robot_left
+                self.reward_devices_id = "829212070352"
             else:
                 self.device_id = device_id
 
@@ -83,6 +83,10 @@ class CameraHandler:
             self.goal_position_base = None
             self.obj_position_base = None
 
+            self.marker_3_base = None
+            self.marker_4_base = None
+            self.marker_5_base = None
+
 
             self.dictionary = cv2.aruco.Dictionary_get(
                 cv2.aruco.DICT_ARUCO_ORIGINAL)
@@ -100,7 +104,10 @@ class CameraHandler:
         return self.distance_buffer[-1]
 
     def get_current_obj(self):
-        return self.obj_position
+        return self.obj_position_base
+    
+    def get_targetmarkers(self):
+        return self.marker_3_base,self.marker_4_base,self.marker_5_base
 
     def start_pipeline(self):
         # self.pipeline.start()
@@ -114,10 +121,9 @@ class CameraHandler:
         self.align = rs.align(align_to)
 
         #start Reward Camera
+        self.reward_pipeline.start(self.reward_config)
         reward_align_to = rs.stream.color
         self.reward_align = rs.align(reward_align_to)
-        self.reward_pipeline.start(self.reward_config)
-
 
         while True:
             #Observation Camera
@@ -126,6 +132,7 @@ class CameraHandler:
             aligned_frames = self.align.process(frames)
             depth_frame = aligned_frames.get_depth_frame()
 
+            #Reward Camera left
             self.depth_frame = depth_frame
             self.__depth_frame = np.asanyarray(depth_frame.get_data())
             self.depth_buffer.append(self.__depth_frame)
@@ -137,19 +144,7 @@ class CameraHandler:
 
             self.color_buffer.append(self.__color_frame)
 
-            # Compute the distance and store them in the buffer
-            distance_temp = self.cal_distance()
-
-            if (distance_temp == 1):
-                self.distance_buffer.append(self.distance_buffer[-1])
-
-            if (distance_temp != 1):
-                if (distance_temp < 0.5):
-                    self.distance_buffer.append(distance_temp)
-                else:
-                    self.distance_buffer.append(self.distance_buffer[-1])
-
-            #Reward Camera
+            #Reward Camera right
             reward_frames = self.reward_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
             reward_aligned_frames = self.reward_align.process(reward_frames)
             reward_color_frame = np.asanyarray(reward_aligned_frames.get_color_frame().get_data())
@@ -157,9 +152,29 @@ class CameraHandler:
             self.reward_frame = reward_color_frame
             self.reward_depth_frame = reward_aligned_frames.get_depth_frame()
 
+            # Compute the distance and store them in the buffer
+            distance_temp = self.cal_distance()
+
+            if (distance_temp == 1):
+                self.distance_buffer.append(self.distance_buffer[-1])
+
+            if (distance_temp <=1):
+                self.distance_buffer.append(distance_temp)
+            
+            # Filter the outlier 
+            if self.distance_buffer[-2]!=1 and abs(self.distance_buffer[-1]-self.distance_buffer[-2])>0.1:
+                self.distance_buffer.append(self.distance_buffer[-2])
+
+                # if self.distance_buffer[-1]!=1 and abs(distance_temp-self.distance_buffer[-1])>0.2:
+                # if (distance_temp < 0.8):
+                #     self.distance_buffer.append(distance_temp)
+                # else:
+                #     self.distance_buffer.append(self.distance_buffer[-1])
+
+            
             if self.color_image is not None:
-                cv2.imshow('Observation',self.color_image)
-                cv2.imshow('Reward', self.reward_frame)
+                cv2.imshow('right',self.color_image)
+                cv2.imshow('left', self.reward_frame)
             key = cv2.waitKey(1)
             if key & 0xFF == ord('q') or key == 27:
                 cv2.destroyAllWindows()
@@ -169,13 +184,9 @@ class CameraHandler:
     def _capture(self):
 
         # get the frames
-        # try:
         frames = self.pipeline.wait_for_frames(
             200 if (self.frame_count > 1) else 10000)  # wait 10 seconds for first frame
-        # except Exception as e:
-        #     logging.error(e)
-        #     return
-        #
+
         # convert camera frames to images
 
         # Align the depth frame to color frame
@@ -197,121 +208,6 @@ class CameraHandler:
         # return original images including color image and depth image(CV form) along wiht color,depth frame(for pyrealsense)
         return self.color_image, self.depth_image, self.depth_frame, self.color_frame
 
-    # For displaying to test the marker detection visually
-    def markerprocess(self):
-
-        # Option 1: Capture the frame each time to get a series of frame
-        color_image, depth_image, depth_frame, color_frame = self._capture()
-
-        # Option 2: Camera start_pipeline runs in the background and get frame each time
-        # color_image = self.color_image
-        # depth_frame = self.depth_frame
-        # color_frame = self.color_frame
-
-        # Aruco marker part
-        # Detect the markers in the image
-        markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(
-            color_image, self.dictionary, parameters=self.parameters)
-
-        aruco_list = {}
-        # centre= {}
-        result_center = {}
-        # orient_centre= {}
-        if markerIds is not None:
-            # Print corners and ids to the console
-            # result=zip(markerIds, markerCorners)
-            for k in range(len(markerCorners)):
-                temp_1 = markerCorners[k]
-                temp_1 = temp_1[0]
-                temp_2 = markerIds[k]
-                temp_2 = temp_2[0]
-                aruco_list[temp_2] = temp_1
-            key_list = aruco_list.keys()
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            # print(key_list)
-            for key in key_list:
-                dict_entry = aruco_list[key]
-                centre = dict_entry[0] + dict_entry[1] + \
-                    dict_entry[2] + dict_entry[3]
-                centre[:] = [int(x / 4) for x in centre]
-                # orient_centre = centre + [0.0,5.0]
-                centre = tuple(centre)
-                result_center[key] = centre
-                # orient_centre = tuple((dict_entry[0]+dict_entry[1])/2)
-                cv2.circle(color_image, centre, 1, (0, 0, 255), 8)
-
-            # Compute distance when matching the conditions
-            if len(result_center) < 4:
-                print("No enough marker detected")
-
-            if len(result_center) >= 4:
-                # To avoid keyerror
-                # start = time.time()
-                try:
-                    # Moving object localization marker
-                    x_id0 = result_center[0][0]
-                    y_id0 = result_center[0][1]
-                    p_0 = [x_id0, y_id0]
-
-                    # Target object localization marker
-                    # Single ID-5
-                    x_id5 = result_center[5][0]
-                    y_id5 = result_center[5][1]
-                    p_5 = [x_id5, y_id5]
-
-                    # Dual ID-4 and ID-3
-                    x_id4 = result_center[4][0]
-                    y_id4 = result_center[4][1]
-                    p_4 = [x_id4, y_id4]
-
-                    x_id3 = result_center[3][0]
-                    y_id3 = result_center[3][1]
-                    p_3 = [x_id3, y_id3]
-
-                    # Deproject pixel to 3D point
-                    point_0 = self.pixel2point(depth_frame, p_0)
-                    point_5 = self.pixel2point(depth_frame, p_5)
-                    point_4 = self.pixel2point(depth_frame, p_4)
-                    point_3 = self.pixel2point(depth_frame, p_3)
-                    # Calculate target point
-                    point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
-                                    point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
-                    # Compute distance
-                    # dis=distance_3dpoints(point_target,point_0)
-
-                    # Display target and draw a line between them
-                    color_intrin = color_frame.profile.as_video_stream_profile().intrinsics
-                    target_pixel = rs.rs2_project_point_to_pixel(
-                        color_intrin, point_target)
-                    target_pixel[0] = int(target_pixel[0])
-                    target_pixel[1] = int(target_pixel[1])
-                    cv2.circle(color_image, tuple(
-                        target_pixel), 1, (0, 0, 255), 8)
-                    cv2.line(color_image, tuple(p_0), tuple(
-                        target_pixel), (0, 255, 0), 2)
-
-                    # Euclidean distance
-                    dis_obj2target = self.distance_3dpoints(
-                        point_0, point_target)
-                    dis_obj2target_goal = dis_obj2target * \
-                        np.sin(np.arccos(0.02/dis_obj2target))
-
-                    # print(dis_obj2target_goal)
-                    # images = cv2.aruco.drawDetectedMarkers(images, markerCorners, borderColor=(0, 0, 255))
-                    # end = time.time()
-                    # print(str(end-start))
-
-                except KeyError:
-                    print("Keyerror!!!")
-
-            # Outline all of the markers detected in our image
-            # images = cv2.aruco.drawDetectedMarkers(images, markerCorners, borderColor=(0, 0, 255))
-                # self.images = color_image
-        self.images = cv2.aruco.drawDetectedMarkers(
-            color_image, markerCorners, borderColor=(0, 0, 255))
-
-        return self.images
-
     def get_marker_position(self):
 
         # Option 1: Capture the frame each time to get a series of frame
@@ -322,14 +218,13 @@ class CameraHandler:
         # depth_frame = self.depth_frame
         # Add new camera for detection
         reward_color = self.reward_frame
-        
 
 
         # Aruco marker part
         # Detect the markers in the image
         markerIds_temp = None
                
-        # Transformation between two cameras
+        # Transformation robotbase to two cameras 
         "left"
         "               [-0.391273,   0.27366, -0.878642, 0.0620607]"
         " base_T_EE     [0.0879567,  0.961503,  0.260304,  0.315562]"
@@ -396,6 +291,9 @@ class CameraHandler:
                 # try:
                 point_obj = None
                 point_target = None
+                point_marker_3 = None
+                point_marker_4 = None
+                point_marker_5 = None
                 if result_center.get(0) != None:
                     x_id0 = result_center[0][0]
                     y_id0 = result_center[0][1]
@@ -415,6 +313,7 @@ class CameraHandler:
                     p_5 = [x_id5, y_id5]
                     # Deproject pixel to 3D point
                     point_5 = self.pixel2point(depth_frame, p_5)
+                    point_marker_5 = point_marker_5 = np.array(point_5)
 
                 # Dual ID-4 and ID-3
                 if(result_center.get(4) != None):
@@ -423,6 +322,7 @@ class CameraHandler:
                     p_4 = [x_id4, y_id4]
                     # Deproject pixel to 3D point
                     point_4 = self.pixel2point(depth_frame, p_4)
+                    point_marker_4 = point_marker_4 = np.array(point_4)
 
                 if(result_center.get(3) != None):
                     x_id3 = result_center[3][0]
@@ -430,22 +330,24 @@ class CameraHandler:
                     p_3 = [x_id3, y_id3]
                     # Deproject pixel to 3D point
                     point_3 = self.pixel2point(depth_frame, p_3)
+                    point_marker_3 = point_marker_3 = np.array(point_3)
 
                 # Calculate target point
                 if (result_center.get(5) != None and result_center.get(4) != None and result_center.get(3) != None):
                     point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
-                                    point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]       
-                    
-                self.goal_position = point_target
-                old_goal = point_target
-                
-                # share the goal position with the other camera
-                # self.goal_position = np.array(point_target)
-                # self.goal_position_reward = R * self.goal_position + T
-                                
-                # store the obj position
+                                    point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]     
+
+                # store the target /obj position if detected   
+                self.goal_position = point_target   
                 self.obj_position = point_obj
-                old_obj = point_obj
+
+                # In case the target 3 markers cannot be detected at the same time, store the markers that can be detected
+                if point_marker_3 is not None :
+                    self.marker_3_base = base_R_left.dot(point_marker_3) + base_T_left
+                if point_marker_4 is not None :
+                    self.marker_4_base = base_R_left.dot(point_marker_4) + base_T_left
+                if point_marker_5 is not None :
+                    self.marker_5_base = base_R_left.dot(point_marker_5) + base_T_left
                 
                 # Transform to base
                 if self.goal_position !=None:
@@ -455,14 +357,8 @@ class CameraHandler:
                 if  self.obj_position != None:
                     self.obj_position = np.array(point_obj)
                     self.obj_position_base =  base_R_left.dot(self.obj_position) + base_T_left
-                    print(self.obj_position_base)
-                    
-                # print('11')
-                # except KeyError:
-                #     self.obj_position = old_obj
-                #     self.goal_position = old_goal
-        
-        # # Camera right
+                   
+        # Camera right
         if reward_color is not None:
             markerCorners_reward, markerIds_reward, rejectedCandidates_reward = cv2.aruco.detectMarkers(
                 reward_color, self.dictionary, parameters=self.parameters)
@@ -492,11 +388,12 @@ class CameraHandler:
                         centre[:] = [int(x / 4) for x in centre]
                         centre = tuple(centre)
                         result_center[key] = centre
-
-                # print(result_center)
-                # try:
+                
                 point_obj = None
                 point_target = None
+                point_marker_3 = None
+                point_marker_4 = None
+                point_marker_5 = None
                 if result_center.get(0) != None:
                     x_id0 = result_center[0][0]
                     y_id0 = result_center[0][1]
@@ -516,6 +413,7 @@ class CameraHandler:
                     p_5 = [x_id5, y_id5]
                     # Deproject pixel to 3D point
                     point_5 = self.pixel2point(depth_frame, p_5)
+                    point_marker_5 = np.array(point_5)
 
                 # Dual ID-4 and ID-3
                 if(result_center.get(4) != None):
@@ -524,6 +422,7 @@ class CameraHandler:
                     p_4 = [x_id4, y_id4]
                     # Deproject pixel to 3D point
                     point_4 = self.pixel2point(depth_frame, p_4)
+                    point_marker_4 = np.array(point_4)
 
                 if(result_center.get(3) != None):
                     x_id3 = result_center[3][0]
@@ -531,24 +430,25 @@ class CameraHandler:
                     p_3 = [x_id3, y_id3]
                     # Deproject pixel to 3D point
                     point_3 = self.pixel2point(depth_frame, p_3)
+                    point_marker_3 = np.array(point_3)
 
                 # Calculate target point
                 if (result_center.get(5) != None and result_center.get(4) != None and result_center.get(3) != None):
                     point_target = [point_4[0]+point_3[0]-point_5[0], point_4[1] +
                                     point_3[1]-point_5[1], point_4[2]+point_3[2]-point_5[2]]
                 
+                # store the target /obj position if detected
                 self.goal_position_reward = point_target
-                old_goal_reward  = point_target
-
-
-                # share the goal position with the other camera
-                # self.goal_position_reward = np.array(point_target)
-                # self.goal_position = R.T * self.goal_position - R.T*T
-                            
-                # store the obj position
                 self.obj_position_reward  = point_obj
-                old_obj_reward  = point_obj
-                # print(point_obj)
+                
+                # In case the target  markers cannot be detected at the same time, store the markers that can be detected
+
+                if point_marker_3 is not None :
+                    self.marker_3_base = base_R_right.dot(point_marker_3) + base_T_right
+                if point_marker_4 is not None :
+                    self.marker_4_base = base_R_right.dot(point_marker_4) + base_T_right
+                if point_marker_5 is not None :
+                    self.marker_5_base = base_R_right.dot(point_marker_5) + base_T_right
 
                 # Transform to base
                 
@@ -559,115 +459,22 @@ class CameraHandler:
                 if self.obj_position_reward != None:
                     self.obj_position_reward = np.array(self.obj_position_reward )
                     self.obj_position_base =  base_R_right.dot(self.obj_position_reward) + base_T_right
-                    print(self.obj_position_base)
-
-                # except KeyError:
-                #     self.goal_position_reward = old_goal_reward
-                #     self.obj_position_reward = old_obj_reward
-        # print('11')
+       
         return self.obj_position_base,self.goal_position_base
-        # return result_center
-
-        
-            
-            # if self.camera_flag == 1:
-            #     # store the goal position
-            #     self.goal_position = point_target
-            #     old_goal = point_target
-                
-            #     # share the goal position with the other camera
-            #     # self.goal_position = np.array(point_target)
-            #     # self.goal_position_reward = R * self.goal_position + T
-                
-                
-            #     # store the obj position
-            #     self.obj_position = point_obj
-            #     old_obj = point_obj
-            
-            # if self.camera_flag == 2:
-            #     # store the goal position
-                
-            
-            # print (self.goal_position_reward)        
         
     def cal_distance(self):
         # In base frame
         obj,target =self.get_marker_position()
-        # obj = np.array(self.goal_position_base)
-        # target = np.array(self.obj_position_base)
-        dis_obj2target_goal = np.linalg.norm(target-obj)
+        # In case the target cannot be detected with single camera,use the markers could be detected by mutiple cameras
+        if target is None and self.marker_3_base is not None and self.marker_4_base is not None and  self.marker_5_base is not None:
+            target = self.marker_3_base + self.marker_4_base - self.marker_5_base
+        if obj is not None and target is not None:
+            dis_obj2target_goal = np.linalg.norm(target-obj)
+        # In case the target or obj cannot be detected by both cameras
+        else:
+            dis_obj2target_goal = 1
         return dis_obj2target_goal
 
-        # # TODO more robust
-        # start_time = time.time()
-        # temp = self.get_marker_position()
-        # if self.camera_flag == 1:
-        #     depth_frame = self.depth_frame
-        #     obj_position = self.obj_position
-        #     goal_position = self.goal_position 
-        # elif self.camera_flag == 2:
-        #     depth_frame = self.reward_depth_frame
-        #     obj_position = self.goal_position_reward
-        #     goal_position = self.goal_position_reward
-
-        # while ( obj_position== None or goal_position == None):
-        #     temp = self.get_marker_position()
-        #     end = time.time()
-        #     if(end-start_time > 0.005):
-        #         # print("No enough markers detected for distance computation")
-        #         return 1
-        # old_value = 1
-        
-        
-        # try:
-        #     # Moving object localization marker
-        #     if (temp.get(0) != None):
-        #         x_id0 = temp[0][0]
-        #         y_id0 = temp[0][1]
-        #         p_0 = [x_id0, y_id0]
-        #         # Deproject pixel to 3D point
-        #         point_0 = self.pixel2point(depth_frame, p_0)
-
-        #     if (temp.get(1) != None):
-        #         x_id1 = temp[1][0]
-        #         y_id1 = temp[1][1]
-        #         p_1 = [x_id1, y_id1]
-        #         # Deproject pixel to 3D point
-        #         point_1 = self.pixel2point(depth_frame, p_1)
-
-        #     if self.camera_flag == 1:
-        #         point_target = np.array(self.goal_position)
-        #     if self.camera_flag == 2:
-        #         point_target = np.array(self.goal_position_reward)
-
-        #     # print (point_target)
-            
-        #     # Euclidean distance
-        #     # dis_obj2target_goal=0
-        #     if (temp.get(0) != None and temp.get(1) != None):
-        #         point_temp = [(point_0[0]+point_1[0])/2,
-        #                       (point_0[1]+point_1[1])/2, (point_0[2]+point_1[2])/2]
-        #         # dis_obj2target_goal = self.distance_3dpoints(point_temp, point_target)
-        #         point_temp = np.array(point_temp)
-        #         dis_obj2target_goal = np.linalg.norm(point_target-point_temp)
-        #     if (temp.get(0) != None and temp.get(1) == None):
-        #         # dis_obj2target = self.distance_3dpoints(point_0, point_target)
-        #         # dis_obj2target_goal = dis_obj2target #*np.sin(np.arccos(0.02/dis_obj2target))
-        #         point_0 = np.array(point_0)
-        #         dis_obj2target_goal = np.linalg.norm(point_target-point_0)
-        #     if (temp.get(0) == None and temp.get(1) != None):
-        #         # dis_obj2target_goal = self.distance_3dpoints(point_1, point_target)
-        #         point_1 = np.array(point_1)
-        #         dis_obj2target_goal = np.linalg.norm(point_target-point_1)
-            
-        #     old_value = dis_obj2target_goal
-        #     # print (dis_obj2target_goal)
-            
-        #     return dis_obj2target_goal
-
-        # except KeyError:
-        #     print("Keyerror!!!")
-        #     return old_value
 
     def pixel2point(self, frame, u):
 
@@ -754,37 +561,27 @@ if __name__ == '__main__':
     #     if key & 0xFF == ord('q') or key == 27:
     #         cv2.destroyAllWindows()
     #         break
+    count = 2000
+    dis = []
+    while(count != 0):
+        time.sleep(0.01)
+        print(camera_handler.grab_distance())
+        # print(ch.get_current_obj())
+        dis.append(camera_handler.grab_distance())
+        count = count - 1
 
-<<<<<<< HEAD
-=======
-    # a,b = camera_handler.get_marker_position()
-    # print (a)
-    # print (b)
-    # print(np.linalg.norm(a-b))
-
-    
-    # count = 2000
-    # dis = []
-    # while(count != 0):
-    #     time.sleep(0.01)
-    #     print(camera_handler.grab_distance())
-    #     # print(ch.get_current_obj())
-    #     dis.append(camera_handler.grab_distance())
-    #     count = count - 1
-
-    # data_size = len(dis)
-    # axis = np.arange(0, 2000, 1)
-    # lablesize = 18
-    # fontsize = 16
-    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    # plt.xlabel('Count', fontsize=lablesize)
-    # plt.ylabel('Distance[m]', fontsize=lablesize)
-    # # plt.xticks(fontsize=fontsize)
-    # # plt.yticks(fontsize=fontsize)
-    # # plt.legend(loc='lower right',fontsize=18)
-    # plt.grid(ls='--')
-    # plt.show()
->>>>>>> 19ea019ec15955bce9e156c6dbe915222a7698b0
+    data_size = len(dis)
+    axis = np.arange(0, 2000, 1)
+    lablesize = 18
+    fontsize = 16
+    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    plt.xlabel('Count', fontsize=lablesize)
+    plt.ylabel('Distance[m]', fontsize=lablesize)
+    # plt.xticks(fontsize=fontsize)
+    # plt.yticks(fontsize=fontsize)
+    # plt.legend(loc='lower right',fontsize=18)
+    plt.grid(ls='--')
+    plt.show()
 
     # test average time to get distance
     # count = 0
