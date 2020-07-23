@@ -35,9 +35,24 @@ class CameraHandler:
             if device_id is None:
                 self.device_id =  "943222073921"# observation: "828112071102"   "829212070352"robot right  "943222073921" robot_left
                 self.reward_devices_id = "829212070352"
+                self.observation_device_id = "828112071102"
             else:
                 self.device_id = device_id
 
+            # For observation camera
+            self.obesrvation_pipeline = rs.pipeline()
+            self.obesrvation_config = rs.config()
+            self.obesrvation_config.enable_device(self.observation_device_id)
+            self.obesrvation_config.enable_stream(
+                rs.stream.depth, 640, 480, rs.format.z16, 60)
+            self.obesrvation_config.enable_stream(
+                rs.stream.color, 640, 480, rs.format.bgr8, 60)
+
+            self.observation_color = None
+            self.observation_depth = None
+
+
+            # For reward cameras
             self.config = rs.config()
             self.config.enable_device(self.device_id)
             self.config.enable_stream(
@@ -45,19 +60,17 @@ class CameraHandler:
             self.config.enable_stream(
                 rs.stream.color, 640, 480, rs.format.bgr8, 60)
 
-            # Start the second camera that computes the rewards
+            # Start the second camera 
             self.reward_pipeline = rs.pipeline()
             self.reward_config = rs.config()
             self.reward_config.enable_device(self.reward_devices_id)
             self.reward_config.enable_stream(
                 rs.stream.depth, 640, 480, rs.format.z16, 60)
             self.reward_config.enable_stream(
-                rs.stream.color, 640, 480, rs.format.bgr8, 60)
-
+                rs.stream.color, 640, 480, rs.format.bgr8, 60) 
+            
             self.reward_frame = None
             self.reward_depth_frame = None
-            # Choose which camera to use
-            self.camera_flag = 1
 
             self.color_image = None
             self.color_frame = None
@@ -116,33 +129,45 @@ class CameraHandler:
         # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
 
         #start Observation Camera
+        self.obesrvation_pipeline.start(self.obesrvation_config)
+        obesrvation_align_to = rs.stream.color
+        self.obesrvation_align = rs.align(obesrvation_align_to)
+
+        #start Reward Camera
         profile = self.pipeline.start(self.config)
         align_to = rs.stream.color
         self.align = rs.align(align_to)
-
-        #start Reward Camera
+        
         self.reward_pipeline.start(self.reward_config)
         reward_align_to = rs.stream.color
         self.reward_align = rs.align(reward_align_to)
 
         while True:
             #Observation Camera
+            observation_frames = self.obesrvation_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
+            observation_aligned_frames = self.obesrvation_align.process(observation_frames)
+            observation_color_frame = np.asanyarray(observation_aligned_frames.get_color_frame().get_data())
+            observation_depth_frame = np.asanyarray(observation_aligned_frames.get_depth_frame().get_data())
+            
+            self.observation_color = observation_color_frame
+            self.color_buffer.append(self.observation_color)
+            self.observation_depth = observation_depth_frame
+            self.depth_buffer.append(self.observation_depth)
+
+             
+            #Reward Camera left
             frames = self.pipeline.wait_for_frames(
                 200 if (self.frame_count > 1) else 10000)  # wait 10 seconds for first frame
             aligned_frames = self.align.process(frames)
             depth_frame = aligned_frames.get_depth_frame()
-
-            #Reward Camera left
             self.depth_frame = depth_frame
             self.__depth_frame = np.asanyarray(depth_frame.get_data())
-            self.depth_buffer.append(self.__depth_frame)
-  
+            
 
             self.color_frame = np.asanyarray(aligned_frames.get_color_frame().get_data())
             self.color_image = self.color_frame 
             self.__color_frame = cv2.resize(self.color_frame, self.__resolution)
-
-            self.color_buffer.append(self.__color_frame)
+            
 
             #Reward Camera right
             reward_frames = self.reward_pipeline.wait_for_frames(200 if (self.frame_count > 1) else 10000)
@@ -175,6 +200,7 @@ class CameraHandler:
             if self.color_image is not None:
                 cv2.imshow('right',self.color_image)
                 cv2.imshow('left', self.reward_frame)
+                cv2.imshow('observation', self.depth_buffer[-1])
             key = cv2.waitKey(1)
             if key & 0xFF == ord('q') or key == 27:
                 cv2.destroyAllWindows()
@@ -259,10 +285,6 @@ class CameraHandler:
             markerCorners, markerIds, rejectedCandidates = cv2.aruco.detectMarkers(
                 color_image, self.dictionary, parameters=self.parameters)
             if markerIds is not None:
-                # find goal
-                # # if (3 in markerIds) and (4 in markerIds) and (5 in markerIds):
-                # if 0 in markerIds:
-                #     self.camera_flag = 1
                 depth_frame = self.depth_frame
                 markerIds_temp = markerIds
                 markerCorners_temp = markerCorners
@@ -552,6 +574,9 @@ if __name__ == '__main__':
     # time needed for camera to warm up to continue getting frames (When running the camera in the background)
     time.sleep(2)
 
+
+    a,b,c = camera_handler.get_targetmarkers()
+    print (a,b,c)
     # while True:
     #     color_frame = camera_handler.color_frame
     #     reward_frame = camera_handler.reward_frame
@@ -561,27 +586,29 @@ if __name__ == '__main__':
     #     if key & 0xFF == ord('q') or key == 27:
     #         cv2.destroyAllWindows()
     #         break
-    count = 2000
-    dis = []
-    while(count != 0):
-        time.sleep(0.01)
-        print(camera_handler.grab_distance())
-        # print(ch.get_current_obj())
-        dis.append(camera_handler.grab_distance())
-        count = count - 1
 
-    data_size = len(dis)
-    axis = np.arange(0, 2000, 1)
-    lablesize = 18
-    fontsize = 16
-    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    plt.xlabel('Count', fontsize=lablesize)
-    plt.ylabel('Distance[m]', fontsize=lablesize)
-    # plt.xticks(fontsize=fontsize)
-    # plt.yticks(fontsize=fontsize)
-    # plt.legend(loc='lower right',fontsize=18)
-    plt.grid(ls='--')
-    plt.show()
+# plot
+    # count = 2000
+    # dis = []
+    # while(count != 0):
+    #     time.sleep(0.01)
+    #     print(camera_handler.grab_distance())
+    #     # print(ch.get_current_obj())
+    #     dis.append(camera_handler.grab_distance())
+    #     count = count - 1
+
+    # data_size = len(dis)
+    # axis = np.arange(0, 2000, 1)
+    # lablesize = 18
+    # fontsize = 16
+    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    # plt.xlabel('Count', fontsize=lablesize)
+    # plt.ylabel('Distance[m]', fontsize=lablesize)
+    # # plt.xticks(fontsize=fontsize)
+    # # plt.yticks(fontsize=fontsize)
+    # # plt.legend(loc='lower right',fontsize=18)
+    # plt.grid(ls='--')
+    # plt.show()
 
     # test average time to get distance
     # count = 0
