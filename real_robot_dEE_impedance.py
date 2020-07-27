@@ -36,6 +36,7 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
 
             obs, reward, done, info = env.step(action)
+            print (reward)
             
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))

@@ -52,7 +52,7 @@ class MoveObjectToTarget(Task):
                 reward = (d_last - d_current)/self.total_distance
                 # reward = d_current
             done = d_current<0.04
-        return reward, done
+        return self.camera_handler.grab_distance(), done
 
     def initialize_task(self):
         if self._simulation:
