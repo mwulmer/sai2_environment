@@ -13,7 +13,7 @@ def main():
     action_space = ActionSpace.ABS_EE_POSE_IMPEDANCE
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=True,
+                   simulation=False,
                    action_space=action_space,
                    blocking_action=True,
                    # action_frequency=20,

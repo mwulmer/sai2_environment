@@ -200,14 +200,14 @@ class CameraHandler:
                     #     self.distance_buffer.append(self.distance_buffer[-1])
 
                 
-                if self.color_image is not None:
-                    cv2.imshow('right',self.color_image)
-                    cv2.imshow('left', self.reward_frame)
-                    cv2.imshow('observation', self.depth_buffer[-1])
-                key = cv2.waitKey(1)
-                if key & 0xFF == ord('q') or key == 27:
-                    cv2.destroyAllWindows()
-                    break
+                # if self.color_image is not None:
+                #     cv2.imshow('right',self.color_image)
+                #     cv2.imshow('left', self.reward_frame)
+                #     cv2.imshow('observation', self.depth_buffer[-1])
+                # key = cv2.waitKey(1)
+                # if key & 0xFF == ord('q') or key == 27:
+                #     cv2.destroyAllWindows()
+                #     break
         except KeyboardInterrupt:
             self.camera_thread.join()
 
@@ -583,6 +583,9 @@ if __name__ == '__main__':
 
     a,b,c = camera_handler.get_targetmarkers()
     print (a,b,c)
+
+    d = camera_handler.get_current_obj()
+    print(d)
     # while True:
     #     color_frame = camera_handler.color_frame
     #     reward_frame = camera_handler.reward_frame

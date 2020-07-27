@@ -92,10 +92,21 @@ class RobotEnv(object):
             'tmp', self._client, camera_handler=self.camera_handler, simulation=simulation)
 
     def reset(self):
-        self._client.reset(self._episodes)
-        # TODO do we want to set it every time or keep one action space per experiment?
-        if self._episodes != 0:
-            self._client.set_action_space()
+        # self._client.reset(self._episodes)
+        # # TODO do we want to set it every time or keep one action space per experiment?
+        # if self._episodes != 0:
+        #     self._client.set_action_space()
+
+        # TODO to find how to implement action here
+        task_is_reset = False
+        while not task_is_reset:    
+            reset_action = self.task.reset_trajectory()
+            print(reset_action)
+            for i in range (len(reset_action)):
+                self.step(reset_action[i])
+            # how to check if the environment is reset
+            task_is_reset = self.task.is_reset()
+
 
         if self._episodes % 10 == 0:
             print("Episode: {}; Elapsed Time: {} minutes".format(
@@ -146,8 +157,8 @@ class RobotEnv(object):
             reward, done = self._compute_reward()
 
         info = None
-        obs = self._get_obs()  # has to be before the contact reset \!/        
-
+        # obs = self._get_obs()  # has to be before the contact reset \!/        
+        obs = 1
         return obs, reward, done, info
 
     def take_action(self, action):

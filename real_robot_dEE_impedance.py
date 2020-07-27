@@ -16,7 +16,7 @@ def main():
     action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
 
     env = RobotEnv(name='move_object_to_target',
-                   simulation=True,
+                   simulation=False,
                    action_space=action_space,
                    action_frequency=20,
                    render=True,
@@ -41,11 +41,11 @@ def main():
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
             action = env.act_optimally()
 
-            obs, reward, done, info = env.step(action)  
-
-            if done:                
-                obs = env.reset()
-                continue
+            obs, reward, done, info = env.step(action)
+            # obs = env.reset()
+            # if done:                
+            #     obs = env.reset()
+            #     continue
                 
             # if render:
             #     im = obs[0]
@@ -56,7 +56,7 @@ def main():
             #     if key & 0xFF == ord('q') or key == 27:
             #         cv2.destroyAllWindows()
             #         break
-        env.close()
+        # env.close()
 
     
     print("Action frequency: {}".format(env.timer._update_counter/(time.time()-start_time)))
