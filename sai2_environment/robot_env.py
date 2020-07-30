@@ -98,13 +98,12 @@ class RobotEnv(object):
         #     self._client.set_action_space()
 
         # TODO to find how to implement action here
+        self.task.initialize_task()
         task_is_reset = False
         while not task_is_reset:    
-            reset_action = self.task.reset_trajectory()
-            print(reset_action)
-            for i in range (len(reset_action)):
-                self.step(reset_action[i])
-            # how to check if the environment is reset
+            reset_action = self.task.act_optimally()
+            self.step(reset_action)
+            # how to check if the environment is reset (Now it ends when the trajectory is done)
             task_is_reset = self.task.is_reset()
 
 
@@ -114,7 +113,7 @@ class RobotEnv(object):
 
         self._episodes += 1
         self.task.initialize_task()
-        return self._get_obs()
+        return 1#self._get_obs()
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)/255.0

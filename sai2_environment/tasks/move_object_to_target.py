@@ -37,6 +37,7 @@ class MoveObjectToTarget(Task):
             self.current_obj_distance = self.camera_handler.grab_distance()
             self.last_obj_distance = self.current_obj_distance
             self.total_distance = self.camera_handler.grab_distance()
+            self.traj = self.reset_trajectory()
 
     def initialize_task(self):
         self.cumulative_reward = 0
@@ -103,7 +104,6 @@ class MoveObjectToTarget(Task):
         if self.traj:
             required_behavior = self.traj[0]
             required_position = required_behavior[:3]
-            print(required_position)
             required_stiffness = required_behavior[3:]
             if (self.euclidean_distance(required_position, ee_pos) > 0.05):
                 action_pos = required_position - desired_pos[:3]
@@ -111,7 +111,7 @@ class MoveObjectToTarget(Task):
                 action = np.concatenate((action_pos, np.array([0,0])))
             else:
                 self.traj.pop(0)
-
+        print(self.traj)
         return action
 
     def plan_optimal_trajectory(self):
@@ -138,26 +138,66 @@ class MoveObjectToTarget(Task):
         return trajectory
 
     def reset_trajectory(self):
-        
-        obj_pos = self.camera_handler.get_current_obj()
-        target_3,target_4,target_5 = self.camera_handler.get_targetmarkers()
-        
-        a1 = np.array([target_3[0], target_3[1] -
-                       np.sign(target_3[1])*0.2, 0.15, 50, 0])
-        
-        # a2 = np.array([obj_pos[0]-0.1, obj_pos[1] +
-        #                np.sign(obj_pos[1])*0.1, 0.04, 50, 0])
-        
-        # a3 = np.array([obj_pos[0]-0.1, obj_pos[1]-np.sign(obj_pos[1])*0.2, 0.04, 50, 0])
 
-        trajectory = [a1]
-        print(trajectory)
+        
+        obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
+
+        # modified 30,07
+        # Move the obj to a regular orientation
+        # a_01 = np.array([marker1[0]-0.1, marker1[1] +
+        #                     np.sign(marker1[1])*0.15, 0.15, 50, 0])
+        # a_02 = np.array([marker1[0]-0.1, marker1[1] +
+        #                     np.sign(marker1[1])*0.15, 0.04, 50, 0])
+        # a_03 = np.array([marker1[0]-0.1, marker1[1] -
+        #                     np.sign(marker1[1]-marker0[1])*0.05, 0.04, 50, 0])
+        
+        
+        #Set a predefined position for obj 
+        pre_defined_pos = np.array([0.375,-0.20,0,15])
+        obj_pos = self.camera_handler.get_current_obj()
+        # target_3,target_4,target_5 = self.camera_handler.get_targetmarke 
+        
+        # Find obj and move the EE beside the obj
+        a1 = np.array([obj_pos[0]-0.1, obj_pos[1] +
+                            np.sign(obj_pos[1])*0.16, 0.15, 50, 0])
+        # Go down 
+        a2 = np.array([obj_pos[0]-0.1, obj_pos[1] +
+                            np.sign(obj_pos[1])*0.16, 0.04, 50, 0])
+        
+        #Push along y axis
+        a3 = np.array([obj_pos[0]-0.1, pre_defined_pos[1], 0.04, 50, 0])
+
+        #Up 
+        a4 = np.array([obj_pos[0]-0.1, pre_defined_pos[1], 0.15, 50, 0])
+
+        #Beside
+        if (obj_pos[0]-0.1>0,375):
+            a5 = np.array([obj_pos[0], pre_defined_pos[1]-0.05, 0.15, 50, 0])
+            #Down
+            a6 = np.array([obj_pos[0], pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            #Push along x axis
+            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.05, 0.04, 50, 0])
+        
+        else:
+            a5 = np.array([obj_pos[0]-0.15, pre_defined_pos[1]-0.05, 0.15, 50, 0])
+            #Down
+            a6 = np.array([obj_pos[0]-0.15, pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            #Push along x axis
+            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.05, 0.04, 50, 0])
+                
+
+        trajectory = [a1, a2, a3, a4, a5, a6, a7]
+
+        # trajectory = [a_01,a_02,a_03,a1, a2, a3, a4, a5, a6, a7]
+        
         
         return trajectory
 
     def is_reset(self):
         # ToDo :to get the
-        return True
+        if len(self.traj) == 0:
+            return True
+        return False
 
     def euclidean_distance(self, x1, x2):
         return np.linalg.norm(x1 - x2)

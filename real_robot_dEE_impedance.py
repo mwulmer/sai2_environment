@@ -39,7 +39,8 @@ def main():
             stiffness_linear =  np.random.normal(loc=0.0, scale=10, size=(1,))
             stiffness_rot = np.random.normal(loc=0.0, scale=1, size=(1,))
             action = np.concatenate((position,stiffness_linear,stiffness_rot))
-            action = env.act_optimally()
+            # action = env.act_optimally()
+            # print(action)
 
             obs, reward, done, info = env.step(action)
             # obs = env.reset()
