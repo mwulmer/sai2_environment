@@ -122,7 +122,7 @@ class CameraHandler:
         return self.distance_buffer[-1]
 
     def get_current_obj(self):
-        return self.obj_position_base #self.marker_0_base,self.marker_1_base
+        return self.obj_position_base ,self.marker_0_base,self.marker_1_base
     
     def get_targetmarkers(self):
         return self.marker_3_base,self.marker_4_base,self.marker_5_base
@@ -333,7 +333,7 @@ class CameraHandler:
                     y_id0 = result_center[0][1]
                     p_0 = [x_id0, y_id0]
                     # Deproject pixel to 3D point
-                    point_obj = self.pixel2point(depth_frame, p_0)
+                    # point_obj = self.pixel2point(depth_frame, p_0)
                     # modified 30,07
                     point_marker_0 = self.pixel2point(depth_frame, p_0)
                 
@@ -381,15 +381,16 @@ class CameraHandler:
                 self.goal_position = point_target   
                 
                 # modified 30,07
-                # point_obj = (np.array(point_maeker_0) + np.array(point_maeker_1))/2
-                self.obj_position = point_obj
+                if point_marker_0 is not None and point_marker_1 is not None:
+                    point_obj = (np.array(point_marker_0) + np.array(point_marker_1))/2
+                    self.obj_position = point_obj
 
                 # In case the target 3 markers cannot be detected at the same time, store the markers that can be detected
                 # modified 30,07
-                # if point_marker_0 is not None :
-                #     self.marker_0_base = base_R_left.dot(point_marker_0) + base_T_left
-                # if point_marker_1 is not None :
-                #     self.marker_1_base = base_R_left.dot(point_marker_1) + base_T_left
+                if point_marker_0 is not None :
+                    self.marker_0_base = base_R_left.dot(point_marker_0) + base_T_left
+                if point_marker_1 is not None :
+                    self.marker_1_base = base_R_left.dot(point_marker_1) + base_T_left
                 if point_marker_3 is not None :
                     self.marker_3_base = base_R_left.dot(point_marker_3) + base_T_left
                 if point_marker_4 is not None :
@@ -399,11 +400,11 @@ class CameraHandler:
                 
                 # Transform to base
                 if self.goal_position !=None:
-                    self.goal_position = np.array(point_target)
+                    self.goal_position = np.array(self.goal_position)
                     self.goal_position_base = base_R_left.dot(self.goal_position) + base_T_left
                     
-                if  self.obj_position != None:
-                    self.obj_position = np.array(point_obj)
+                if  self.obj_position is not None:
+                    self.obj_position = np.array(self.obj_position)
                     self.obj_position_base =  base_R_left.dot(self.obj_position) + base_T_left
                 
                    
@@ -451,7 +452,7 @@ class CameraHandler:
                     y_id0 = result_center[0][1]
                     p_0 = [x_id0, y_id0]
                     # Deproject pixel to 3D point
-                    point_obj = self.pixel2point(depth_frame, p_0)
+                    # point_obj = self.pixel2point(depth_frame, p_0)
                     # modified 30,07
                     point_marker_0 = self.pixel2point(depth_frame, p_0)
                 
@@ -497,15 +498,16 @@ class CameraHandler:
                 self.goal_position_reward = point_target
 
                 # modified 30,07
-                # point_obj = (np.array(point_maeker_0) + np.array(point_maeker_1))/2
-                self.obj_position_reward  = point_obj
+                if point_marker_0 is not None and point_marker_1 is not None:
+                    point_obj = (np.array(point_marker_0) + np.array(point_marker_1))/2
+                    self.obj_position_reward  = point_obj
                 
                 # In case the target  markers cannot be detected at the same time, store the markers that can be detected
                 # modified 30,07
-                # if point_marker_0 is not None :
-                #     self.marker_0_base = base_R_right.dot(point_marker_0) + base_T_right
-                # if point_marker_1 is not None :
-                #     self.marker_1_base = base_R_right.dot(point_marker_1) + base_T_right
+                if point_marker_0 is not None :
+                    self.marker_0_base = base_R_right.dot(point_marker_0) + base_T_right
+                if point_marker_1 is not None :
+                    self.marker_1_base = base_R_right.dot(point_marker_1) + base_T_right
                 if point_marker_3 is not None :
                     self.marker_3_base = base_R_right.dot(point_marker_3) + base_T_right
                 if point_marker_4 is not None :
@@ -516,10 +518,10 @@ class CameraHandler:
                 # Transform to base
                 
                 if self.goal_position_reward !=None:
-                    self.goal_position_reward = np.array(point_target)
+                    self.goal_position_reward = np.array(self.goal_position_reward )
                     self.goal_position_base = base_R_right.dot(self.goal_position_reward) + base_T_right
                     
-                if self.obj_position_reward != None:
+                if self.obj_position_reward is not None:
                     self.obj_position_reward = np.array(self.obj_position_reward )
                     self.obj_position_base =  base_R_right.dot(self.obj_position_reward) + base_T_right
        
@@ -531,6 +533,8 @@ class CameraHandler:
         # In case the target cannot be detected with single camera,use the markers could be detected by mutiple cameras
         if target is None and self.marker_3_base is not None and self.marker_4_base is not None and  self.marker_5_base is not None:
             target = self.marker_3_base + self.marker_4_base - self.marker_5_base
+        if obj is None and self.marker_0_base is not None and self.marker_1_base is not None:
+            obj = self.marker_0_base/2 + self.marker_1_base/2
         if obj is not None and target is not None:
             dis_obj2target_goal = np.linalg.norm(target-obj)
         # In case the target or obj cannot be detected by both cameras
@@ -545,25 +549,25 @@ class CameraHandler:
         u_y = int(u[1])
         # Get depth from pixels
         dis2cam_u = frame.get_distance(u_x, u_y)
-        # dis2cam_u_alongx = 0
-        # dis2cam_u_alongy = 0
-        # # Make the depth value stable use more pixels
-        # # along x axis
-        # for i in range (1,3):
-        #     dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x+i, u_y)
-        #     dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x-i, u_y)
-        # # along x axis
-        # for i in range (1,3):
-        #     dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y+i)
-        #     dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y-i)
+        dis2cam_u_alongx = 0
+        dis2cam_u_alongy = 0
+        # Make the depth value stable use more pixels
+        # along x axis
+        for i in range (1,3):
+            dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x+i, u_y)
+            dis2cam_u_alongx = dis2cam_u_alongx + frame.get_distance(u_x-i, u_y)
+        # along x axis
+        for i in range (1,3):
+            dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y+i)
+            dis2cam_u_alongy = dis2cam_u_alongy + frame.get_distance(u_x, u_y-i)
         
-        # sum_depth = dis2cam_u_alongx + dis2cam_u_alongy + dis2cam_u
+        sum_depth = dis2cam_u_alongx + dis2cam_u_alongy + dis2cam_u
 
-        # depth_average = sum_depth / 9
+        depth_average = sum_depth / 9
         # Convert pixels to 3D coordinates in camera frame(deprojection)
         depth_intrin = frame.profile.as_video_stream_profile().intrinsics
         u_pos = rs.rs2_deproject_pixel_to_point(
-            depth_intrin, [u_x, u_y], dis2cam_u)
+            depth_intrin, [u_x, u_y], depth_average)
 
         return u_pos
 
@@ -619,8 +623,9 @@ if __name__ == '__main__':
     a,b,c = camera_handler.get_targetmarkers()
     print (a,b,c)
 
-    d = camera_handler.get_current_obj()
-    print(d)
+    d,e,f = camera_handler.get_current_obj()
+    print(d,e,f)
+
     # while True:
     #     color_frame = camera_handler.color_frame
     #     reward_frame = camera_handler.reward_frame
@@ -632,27 +637,27 @@ if __name__ == '__main__':
     #         break
 
 # plot
-    # count = 2000
-    # dis = []
-    # while(count != 0):
-    #     time.sleep(0.01)
-    #     print(camera_handler.grab_distance())
-    #     # print(ch.get_current_obj())
-    #     dis.append(camera_handler.grab_distance())
-    #     count = count - 1
+    count = 2000
+    dis = []
+    while(count != 0):
+        time.sleep(0.01)
+        print(camera_handler.grab_distance())
+        # print(ch.get_current_obj())
+        dis.append(camera_handler.grab_distance())
+        count = count - 1
 
-    # data_size = len(dis)
-    # axis = np.arange(0, 2000, 1)
-    # lablesize = 18
-    # fontsize = 16
-    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    # plt.xlabel('Count', fontsize=lablesize)
-    # plt.ylabel('Distance[m]', fontsize=lablesize)
-    # # plt.xticks(fontsize=fontsize)
-    # # plt.yticks(fontsize=fontsize)
-    # # plt.legend(loc='lower right',fontsize=18)
-    # plt.grid(ls='--')
-    # plt.show()
+    data_size = len(dis)
+    axis = np.arange(0, 2000, 1)
+    lablesize = 18
+    fontsize = 16
+    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    plt.xlabel('Count', fontsize=lablesize)
+    plt.ylabel('Distance[m]', fontsize=lablesize)
+    # plt.xticks(fontsize=fontsize)
+    # plt.yticks(fontsize=fontsize)
+    # plt.legend(loc='lower right',fontsize=18)
+    plt.grid(ls='--')
+    plt.show()
 
     # test average time to get distance
     # count = 0

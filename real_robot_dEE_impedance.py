@@ -32,7 +32,10 @@ def main():
     for episode in range(episodes):
         
         print("Episode: {}; Elapsed Time: {} minutes".format(episode, round((time.time()-start_time)/60), 4))
+        
         obs = env.reset()
+        
+        
         acc_reward = 0
         for step in range(steps):
             position = np.random.normal(loc=0.0, scale=0.1, size=(3,))
@@ -42,7 +45,7 @@ def main():
             # action = env.act_optimally()
             # print(action)
 
-            obs, reward, done, info = env.step(action)
+            # obs, reward, done, info = env.step(action)
             # obs = env.reset()
             # if done:                
             #     obs = env.reset()
