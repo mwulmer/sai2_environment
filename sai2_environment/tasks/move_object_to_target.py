@@ -112,7 +112,6 @@ class MoveObjectToTarget(Task):
 
     def plan_optimal_trajectory(self):
         puck_pos = self.get_puck_position()
-
         # first action behind the
         a1 = np.array([puck_pos[0], puck_pos[1] +
                        np.sign(puck_pos[1])*0.1, 0.15, 50, 0])

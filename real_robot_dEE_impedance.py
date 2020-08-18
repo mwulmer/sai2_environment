@@ -20,6 +20,7 @@ def main():
                    action_frequency=20,
                    render=True,
                    camera_available=True,
+                   camera_res=(128, 128),
                    rotation_axis=(0, 0, 0))    
 
     episodes = 10

@@ -29,6 +29,7 @@ class RobotEnv(object):
                  action_frequency=20,
                  torque_seq_length=32,
                  camera_available=True,
+                 camera_res = (128, 128),
                  rotation_axis=(True, True, True)):
 
         self.camera_available = camera_available
@@ -37,7 +38,7 @@ class RobotEnv(object):
         self.env_config = {
             'simulation': simulation,
             'render': render,
-            'camera_resolution': (128, 128),
+            'camera_resolution': camera_res,
             'camera_frequency': 30,
             'hostname': hostname,
             'port': 6379,
