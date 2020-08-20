@@ -6,6 +6,7 @@ import time
 from collections import deque
 import matplotlib.pyplot as plt
 import threading
+import os
 
 
 class CameraHandler:
@@ -127,6 +128,78 @@ class CameraHandler:
     def get_targetmarkers(self):
         return self.marker_3_base, self.marker_4_base, self.marker_5_base
 
+    def save_left_camera_images(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+
+        # start Reward Camera
+        profile = self.pipeline.start(self.config)
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
+
+        counter = 0
+        try:
+            while True:
+                # Reward Camera left
+                frames = self.pipeline.wait_for_frames(
+                    200 if (self.frame_count > 1) else 10000)  # wait 10 seconds for first frame
+                aligned_frames = self.align.process(frames)
+
+                self.color_frame = np.asanyarray(
+                    aligned_frames.get_color_frame().get_data())
+                self.color_image = self.color_frame
+                self.__color_frame = cv2.resize(
+                    self.color_frame, self.__resolution)
+
+                # save left image
+                cv2.imshow('image', self.color_image)
+                k = cv2.waitKey(33)
+                if k == ord('s'):
+                    save_path = os.path.join(
+                        save_dir, '{0:06}.png'.format(counter))
+                    cv2.imwrite(save_path, self.color_image)
+                    counter += 1
+                elif k == ord('q'):
+                    break
+
+        except KeyboardInterrupt:
+            self.camera_thread.join()
+
+    def save_right_camera_images(self, save_dir):
+        os.makedirs(save_dir, exist_ok=True)
+
+        # start Reward Camera
+
+        self.reward_pipeline.start(self.reward_config)
+        reward_align_to = rs.stream.color
+        self.reward_align = rs.align(reward_align_to)
+
+        counter = 0
+        try:
+            while True:
+                # Reward Camera right
+                reward_frames = self.reward_pipeline.wait_for_frames(
+                    200 if (self.frame_count > 1) else 10000)
+                reward_aligned_frames = self.reward_align.process(
+                    reward_frames)
+                reward_color_frame = np.asanyarray(
+                    reward_aligned_frames.get_color_frame().get_data())
+
+                self.reward_frame = reward_color_frame
+
+                # save right image
+                cv2.imshow('image', self.reward_frame)
+                k = cv2.waitKey(33)
+                if k == ord('s'):
+                    save_path = os.path.join(
+                        save_dir, '{0:06}.png'.format(counter))
+                    cv2.imwrite(save_path, self.reward_frame)
+                    counter += 1
+                elif k == ord('q'):
+                    break
+
+        except KeyboardInterrupt:
+            self.camera_thread.join()
+
     def start_pipeline(self):
         # self.pipeline.start()
         # align_to = rs.stream.color
@@ -178,6 +251,15 @@ class CameraHandler:
                 self.__color_frame = cv2.resize(
                     self.color_frame, self.__resolution)
 
+                # save left image
+                cv2.imshow('image', self.color_image)
+                k = cv2.waitKey(33)
+                if k == ord('s'):
+                    cv2.imwrite('{0:06}.png'.format(counter), frame)
+                    counter += 1
+                elif k == ord('q'):
+                    break
+
                 # Reward Camera right
                 reward_frames = self.reward_pipeline.wait_for_frames(
                     200 if (self.frame_count > 1) else 10000)
@@ -216,12 +298,10 @@ class CameraHandler:
                 # if key & 0xFF == ord('q') or key == 27:
                 #     cv2.destroyAllWindows()
                 #     break
-
         except KeyboardInterrupt:
             self.camera_thread.join()
 
     # Capture current frame  (like shooting a picture)
-
     def _capture(self):
 
         # get the frames

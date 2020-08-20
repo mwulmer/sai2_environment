@@ -1,0 +1,11 @@
+{
+    "hostname": "127.0.0.1",
+    "port": 6379,
+    "camera_resolution": [128,128],
+    "simulation": true,
+    "render" : true,
+    "vis_freq": 25,
+    "obs_res_width": 128,
+    "obs_res_height": 128,
+    "sim_freq" : 10000
+}
