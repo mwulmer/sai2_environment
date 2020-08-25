@@ -32,7 +32,11 @@ class HandEyeCalibration():
         self.aruco_dict = cv2.aruco.Dictionary_get(ARUCO_NAME)
         self.detector_parameters = cv2.aruco.DetectorParameters_create()
         self.marker_to_cam_poses_list = []
+        self.R_marker_to_cam_poses_list = []
+        self.t_marker_to_cam_poses_list = []
         self.ee_to_base_poses_list = []
+        self.R_ee_to_base_poses_list = []
+        self.t_ee_to_base_poses_list = []
         self.realsense_handler = CameraHandler((640, 480))
 
     def draw_marker(self):
@@ -44,10 +48,13 @@ class HandEyeCalibration():
         self.ee_to_base_poses_list = []
         with open(filename, 'r') as f:
             for line_id, line in enumerate(f):
-                row = line.strip("\n").split("\t")
+                row = line.strip("\n").split(",")
                 row = np.array([float(x) for x in row], dtype=np.float32)
                 A_i = row.reshape((4, 4))
+                A_i = A_i.T
                 self.ee_to_base_poses_list.append(A_i)
+                self.R_ee_to_base_poses_list.append(A_i[0:3,0:3])
+                self.t_ee_to_base_poses_list.append(A_i[0:3,3])
 
     def save_images_with_key(self, save_dir):
         self.realsense_handler.save_left_camera_images(save_dir)
@@ -81,6 +88,12 @@ class HandEyeCalibration():
         for image_idx, image in enumerate(images_list):
             self.marker_to_cam_poses_list.append(
                 self.get_pose_from_one_image(image))
+            self.R_marker_to_cam_poses_list.append(
+                self.get_pose_from_one_image(image)[0:3,0:3]
+            )
+            self.t_marker_to_cam_poses_list.append(
+                self.get_pose_from_one_image(image)[0:3,-1]
+            )
 
     def get_pose_from_one_image(self, image):
         marker_corners = self.detect_aruco_corners(image)
@@ -116,11 +129,47 @@ class HandEyeCalibration():
 
         cap.release()
 
-
 if __name__ == '__main__':
     # calib = HandEyeCalibration(
         # CAMERA_INTRINSICS_MAT, CAMERA_DISTORTION_COEFF_MAT)
     # calib.save_images_with_key("./")
-    handler = CameraHandler((640, 480))
-    # handler.save_left_camera_images("./")
-    handler.save_right_camera_images("./")
+    # handler = CameraHandler((640, 480))
+    # # handler.save_left_camera_images("./")
+    # handler.save_right_camera_images("./")
+    
+    calib = HandEyeCalibration(
+        CAMERA_INTRINSICS_MAT, CAMERA_DISTORTION_COEFF_MAT)
+
+    # Get R,t ee_to_base 
+    calib.read_ee_to_base_poses_from_file("pose.txt")
+    T_ee_base = calib.ee_to_base_poses_list
+    R_ee_base = calib.R_ee_to_base_poses_list
+    t_ee_base = calib.t_ee_to_base_poses_list
+ 
+    # Get R,T c_to_marker
+    img_list = calib.get_images_list_from_dir("")
+    calib.get_poses_from_images(img_list)
+    R_marker_cam = calib.R_marker_to_cam_poses_list
+    t_marker_cam = calib.t_marker_to_cam_poses_list
+    R_cam_marker = []
+    t_cam_marker = []
+    for r,t in zip(R_marker_cam,t_marker_cam):
+        R_cam_marker.append(r.T) 
+        t_cam_marker.append(-r.T.dot(t))
+
+    R_marker_to_ee, t_marker_to_ee = cv2.calibrateHandEye(R_ee_base,t_ee_base,R_cam_marker,t_cam_marker,cv2.CALIB_HAND_EYE_DANIILIDIS)
+
+    # T_cam_marker
+    T_cam_marker = np.concatenate(
+            [R_cam_marker[0], t_cam_marker[0].reshape((3, 1))], axis=1)
+    T_cam_marker = np.concatenate(
+            [T_cam_marker, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
+
+    # T_marker_to_ee
+    T_marker_to_ee = np.concatenate(
+            [R_marker_to_ee, t_marker_to_ee.reshape((3, 1))], axis=1)
+    T_marker_to_ee = np.concatenate(
+            [T_marker_to_ee, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
+    
+    T_cam_base = T_ee_base[0].dot(T_marker_to_ee).dot(T_cam_marker)
+    print(T)
