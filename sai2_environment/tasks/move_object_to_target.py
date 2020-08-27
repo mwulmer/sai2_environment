@@ -145,10 +145,10 @@ class MoveObjectToTarget(Task):
         delta_x = marker1[0] - marker0[0]
         delta_y = marker1[1] - marker0[1]
 
-        a_01 = np.array([marker1[0]-0.12, marker1[1] + np.sign(delta_y)*0.15, 0.15, 50, 0])
-        a_02 = np.array([marker1[0]-0.12, marker1[1] +
+        a_01 = np.array([marker1[0], marker1[1] + np.sign(delta_y)*0.15, 0.15, 50, 0])
+        a_02 = np.array([marker1[0], marker1[1] +
                             np.sign(delta_y)*0.13, 0.04, 50, 0])
-        a_03 = np.array([marker1[0]-0.12, marker1[1]-0.02, 0.03, 50, 0])
+        a_03 = np.array([marker1[0], marker1[1]-0.02, 0.03, 50, 0])
                 
         #Set a predefined position for obj 
         pre_defined_pos = np.array([0.375,-0.20,0,15])
@@ -156,17 +156,17 @@ class MoveObjectToTarget(Task):
         # target_3,target_4,target_5 = self.camera_handler.get_targetmarke 
         
         # Find obj and move the EE beside the obj
-        a1 = np.array([obj_pos[0]-0.12, obj_pos[1] +
+        a1 = np.array([obj_pos[0], obj_pos[1] +
                             np.sign(obj_pos[1])*0.16, 0.15, 50, 0])
         # Go down 
-        a2 = np.array([obj_pos[0]-0.12, obj_pos[1] +
+        a2 = np.array([obj_pos[0], obj_pos[1] +
                             np.sign(obj_pos[1])*0.16, 0.04, 50, 0])
         
         #Push along y axis
-        a3 = np.array([obj_pos[0]-0.12, pre_defined_pos[1], 0.04, 50, 0])
+        a3 = np.array([obj_pos[0], pre_defined_pos[1], 0.04, 50, 0])
 
         #Up 
-        a4 = np.array([obj_pos[0]-0.12, pre_defined_pos[1], 0.15, 50, 0])
+        a4 = np.array([obj_pos[0], pre_defined_pos[1], 0.15, 50, 0])
 
         #Beside
         if (obj_pos[0]-0.1>0,375):
