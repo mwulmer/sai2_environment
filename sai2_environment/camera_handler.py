@@ -274,11 +274,15 @@ class CameraHandler:
         " EE_T_camera   [-1,0,0,0]"
         "               [0,1,0,0]"
         "               [0,0,0,1] "
-        EE_T_camera_left = np.array(
-            [[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-        base_T_EE_left = np.array([[-0.391273, 0.27366, -0.878642, 0.0620607], [0.0879567, 0.961503,
-                                                                                0.260304, 0.315562], [0.916051, 0.0245676, -0.400288, 0.943767], [0, 0, 0, 1]])
-        base_T_camera_left = base_T_EE_left.dot(EE_T_camera_left)
+        # EE_T_camera_left = np.array(
+        #     [[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        # base_T_EE_left = np.array([[-0.391273, 0.27366, -0.878642, 0.0620607], [0.0879567, 0.961503,
+        #                                                                         0.260304, 0.315562], [0.916051, 0.0245676, -0.400288, 0.943767], [0, 0, 0, 1]])
+        # base_T_camera_left = base_T_EE_left.dot(EE_T_camera_left)
+        base_T_camera_left = np.array([ [-2.92152513e-01, -8.60829435e-01,  4.16656445e-01, -8.20919629e-02],
+                                        [-9.56361983e-01,  2.63047919e-01, -1.27119770e-01,  3.63598337e-01],
+                                        [-1.71864357e-04, -4.35626443e-01, -9.00125638e-01,  9.31717567e-01],
+                                        [0.         , 0.         , 0.         , 1.        ]])
         base_R_left = base_T_camera_left[0:3, 0:3]
         base_T_left = base_T_camera_left[0:3, 3]
         "right"
@@ -290,11 +294,19 @@ class CameraHandler:
         " EE_T_camera   [-1,0,0,0]"
         "               [0,1,0,0]"
         "               [0,0,0,1]  "
-        EE_T_camera_right = np.array(
-            [[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-        base_T_EE_right = np.array([[-0.40339, -0.182166, -0.89671, 0.0503344], [-0.0714206, 0.983251, -
-                                                                                 0.167621, -0.296183], [0.912226, -0.00357328, -0.409652, 0.943524], [0, 0, 0, 1]])
-        base_T_camera_right = base_T_EE_right.dot(EE_T_camera_right)
+        # EE_T_camera_right = np.array(
+        #     [[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        # base_T_EE_right = np.array([[-0.40339, -0.182166, -0.89671, 0.0503344], [-0.0714206, 0.983251, -
+        #                                                                          0.167621, -0.296183], [0.912226, -0.00357328, -0.409652, 0.943524], [0, 0, 0, 1]])
+        # base_T_camera_right = base_T_EE_right.dot(EE_T_camera_right)
+        # base_T_camera_right = np.array([[ 0.09433898, -0.8902616 ,   0.44555711, -0.11539241],
+        #                                 [-0.99553126, -0.08357619,  0.04380608 ,-0.29629556],
+        #                                 [-0.00176641, -0.44770838, -0.89417077 , 0.92629916],
+        #                                 [0.         , 0.         , 0.         , 1.        ]])
+        base_T_camera_right = np.array([[ 0.14873457, -0.89726813,  0.4156554 , -0.10166122],
+                                        [-0.98851075, -0.1235298 ,  0.08705028, -0.30935999],
+                                        [-0.0267716 , -0.42382986, -0.90534073,  0.94275621],
+                                        [0.         , 0.         , 0.         , 1.        ]])                                
         base_R_right = base_T_camera_right[0:3, 0:3]
         base_T_right = base_T_camera_right[0:3, 3]
 
@@ -665,27 +677,27 @@ if __name__ == '__main__':
     #         break
 
 # plot
-    count = 2000
-    dis = []
-    while(count != 0):
-        time.sleep(0.01)
-        print(camera_handler.grab_distance())
-        # print(ch.get_current_obj())
-        dis.append(camera_handler.grab_distance())
-        count = count - 1
+    # count = 2000
+    # dis = []
+    # while(count != 0):
+    #     time.sleep(0.01)
+    #     print(camera_handler.grab_distance())
+    #     # print(ch.get_current_obj())
+    #     dis.append(camera_handler.grab_distance())
+    #     count = count - 1
 
-    data_size = len(dis)
-    axis = np.arange(0, 2000, 1)
-    lablesize = 18
-    fontsize = 16
-    plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
-    plt.xlabel('Count', fontsize=lablesize)
-    plt.ylabel('Distance[m]', fontsize=lablesize)
-    # plt.xticks(fontsize=fontsize)
-    # plt.yticks(fontsize=fontsize)
-    # plt.legend(loc='lower right',fontsize=18)
-    plt.grid(ls='--')
-    plt.show()
+    # data_size = len(dis)
+    # axis = np.arange(0, 2000, 1)
+    # lablesize = 18
+    # fontsize = 16
+    # plt.plot(axis, dis, color="steelblue", linewidth=1.0, label='distance')
+    # plt.xlabel('Count', fontsize=lablesize)
+    # plt.ylabel('Distance[m]', fontsize=lablesize)
+    # # plt.xticks(fontsize=fontsize)
+    # # plt.yticks(fontsize=fontsize)
+    # # plt.legend(loc='lower right',fontsize=18)
+    # plt.grid(ls='--')
+    # plt.show()
 
     # test average time to get distance
     # count = 0

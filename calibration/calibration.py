@@ -15,7 +15,7 @@ CAMERA_INTRINSICS_MAT = np.array(
 # [[614.182, 0, 315.91], [0, 614.545, 244.167], [0, 0, 1]], dtype=np.float32)
 CAMERA_DISTORTION_COEFF_MAT = np.array([0, 0, 0, 0, 0], dtype=np.float32)
 ARUCO_NAME = cv2.aruco.DICT_4X4_50
-MARKER_SIDE_LENGTH_MM = 93
+MARKER_SIDE_LENGTH_MM = 0.093
 
 
 class HandEyeCalibration():
@@ -99,9 +99,9 @@ class HandEyeCalibration():
         marker_corners = self.detect_aruco_corners(image)
         rot_vec, trans_vec, _ = cv2.aruco.estimatePoseSingleMarkers(
             marker_corners, self.marker_side_length_mm, self.cam_intr_mat, self.cam_dist_coeff_mat)
-        cv2.aruco.estimatePoseSingleMarkers()
+        rot_vec = rot_vec.reshape(3,)
         sci_rotation = Rotation.from_rotvec(rot_vec)
-        rot_mat = sci_rotation.as_dcm()
+        rot_mat = sci_rotation.as_matrix()
         trans_mat = np.concatenate(
             [rot_mat, trans_vec.reshape((3, 1))], axis=1)
         trans_mat = np.concatenate(
@@ -141,13 +141,13 @@ if __name__ == '__main__':
         CAMERA_INTRINSICS_MAT, CAMERA_DISTORTION_COEFF_MAT)
 
     # Get R,t ee_to_base 
-    calib.read_ee_to_base_poses_from_file("pose.txt")
+    calib.read_ee_to_base_poses_from_file("/home/robopc/repos/sai2_environment/poseright/pose.txt")
     T_ee_base = calib.ee_to_base_poses_list
     R_ee_base = calib.R_ee_to_base_poses_list
     t_ee_base = calib.t_ee_to_base_poses_list
- 
+    
     # Get R,T c_to_marker
-    img_list = calib.get_images_list_from_dir("")
+    img_list = calib.get_images_list_from_dir("/home/robopc/repos/sai2_environment/imageright")
     calib.get_poses_from_images(img_list)
     R_marker_cam = calib.R_marker_to_cam_poses_list
     t_marker_cam = calib.t_marker_to_cam_poses_list
@@ -172,4 +172,4 @@ if __name__ == '__main__':
             [T_marker_to_ee, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
     
     T_cam_base = T_ee_base[0].dot(T_marker_to_ee).dot(T_cam_marker)
-    print(T)
+    print(T_cam_base)
