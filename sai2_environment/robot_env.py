@@ -98,7 +98,18 @@ class RobotEnv(object):
         #     self._client.set_action_space()
 
         # TODO to find how to implement action here
-        self.task.initialize_task()
+        # reach_flag = self.task.detector()
+        reach_flag = True
+        if (reach_flag):
+            self.task.spilt_trajectory()
+            task_is_reset = False
+            while not task_is_reset:    
+                reset_action = self.task.act_optimally()
+                self.step(reset_action)
+                # how to check if the environment is reset (Now it ends when the trajectory is done)
+                task_is_reset = self.task.is_reset()
+        
+        self.task.reset_trajectory()
         task_is_reset = False
         while not task_is_reset:    
             reset_action = self.task.act_optimally()

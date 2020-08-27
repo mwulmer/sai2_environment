@@ -105,13 +105,13 @@ class MoveObjectToTarget(Task):
             required_behavior = self.traj[0]
             required_position = required_behavior[:3]
             required_stiffness = required_behavior[3:]
-            if (self.euclidean_distance(required_position, ee_pos) > 0.05):
+            if (self.euclidean_distance(required_position, ee_pos) > 0.03):
                 action_pos = required_position - desired_pos[:3]
                 #TODO add stiffness
                 action = np.concatenate((action_pos, np.array([0,0])))
             else:
                 self.traj.pop(0)
-        # print(self.traj)
+        print(self.traj)
         return action
 
     def plan_optimal_trajectory(self):
@@ -145,43 +145,41 @@ class MoveObjectToTarget(Task):
         delta_x = marker1[0] - marker0[0]
         delta_y = marker1[1] - marker0[1]
 
-        a_01 = np.array([marker1[0]-0.12, marker1[1] + np.sign(delta_y)*0.15, 0.15, 50, 0])
-        a_02 = np.array([marker1[0]-0.12, marker1[1] +
+        a_01 = np.array([marker1[0], marker1[1] + np.sign(delta_y)*0.15, 0.15, 50, 0])
+        a_02 = np.array([marker1[0], marker1[1] +
                             np.sign(delta_y)*0.13, 0.04, 50, 0])
-        a_03 = np.array([marker1[0]-0.12, marker1[1]-0.02, 0.03, 50, 0])
+        a_03 = np.array([marker1[0], marker1[1]-0.02, 0.03, 50, 0])
                 
         #Set a predefined position for obj 
         pre_defined_pos = np.array([0.375,-0.20,0,15])
-        # obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
-        # target_3,target_4,target_5 = self.camera_handler.get_targetmarke 
         
         # Find obj and move the EE beside the obj
-        a1 = np.array([obj_pos[0]-0.12, obj_pos[1] +
+        a1 = np.array([obj_pos[0], obj_pos[1] +
                             np.sign(obj_pos[1])*0.16, 0.15, 50, 0])
         # Go down 
-        a2 = np.array([obj_pos[0]-0.12, obj_pos[1] +
+        a2 = np.array([obj_pos[0], obj_pos[1] +
                             np.sign(obj_pos[1])*0.16, 0.04, 50, 0])
         
         #Push along y axis
-        a3 = np.array([obj_pos[0]-0.12, pre_defined_pos[1], 0.04, 50, 0])
+        a3 = np.array([obj_pos[0], pre_defined_pos[1], 0.04, 50, 0])
 
         #Up 
-        a4 = np.array([obj_pos[0]-0.12, pre_defined_pos[1], 0.15, 50, 0])
+        a4 = np.array([obj_pos[0], pre_defined_pos[1], 0.15, 50, 0])
 
         #Beside
-        if (obj_pos[0]-0.1>0,375):
-            a5 = np.array([obj_pos[0]+0.05, pre_defined_pos[1]-0.05, 0.15, 50, 0])
+        if (obj_pos[0]>0.375):
+            a5 = np.array([obj_pos[0]+0.13, pre_defined_pos[1]-0.03, 0.15, 50, 0])
             #Down
-            a6 = np.array([obj_pos[0]+0.05, pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            a6 = np.array([obj_pos[0]+0.13, pre_defined_pos[1]-0.03, 0.04, 50, 0])
             #Push along x axis
-            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.03, 0.04, 50, 0])
         
         else:
-            a5 = np.array([obj_pos[0]-0.15, pre_defined_pos[1]-0.05, 0.15, 50, 0])
+            a5 = np.array([obj_pos[0]-0.10, pre_defined_pos[1]-0.03, 0.15, 50, 0])
             #Down
-            a6 = np.array([obj_pos[0]-0.15, pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            a6 = np.array([obj_pos[0]-0.10, pre_defined_pos[1]-0.03, 0.04, 50, 0])
             #Push along x axis
-            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.05, 0.04, 50, 0])
+            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.03, 0.04, 50, 0])
                 
         print(delta_y)
         if (abs(delta_y)<0.02 or abs(delta_y)>= 0.07 ):
@@ -196,15 +194,46 @@ class MoveObjectToTarget(Task):
         # trajectory = [a_01,a_02,a_03,a1, a2, a3, a4, a5, a6, a7]
         
         # trajectory = [a1, a2, a3, a4, a5, a6, a7]
+        self.traj = trajectory
+
+    def spilt_trajectory(self):
+        obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
+        marker3, marker4, marker5 = self.camera_handler.get_targetmarkers()
+        dis_0 = self.euclidean_distance(marker0,marker5)
+        dis_1 = self.euclidean_distance(marker1,marker5)
+        if dis_0 <= dis_1:
+            x_close = marker0[0]
+            y_close = marker0[1]
+            x_far = marker1[0]
+            y_far = marker1[1]
+        else:
+            x_close = marker1[0]
+            y_close = marker1[1]
+            x_far = marker0[0]
+            y_far = marker0[1]
         
-        return trajectory
+        a_1 = np.array([2*x_close-x_far,2*y_close-y_far,0.15,50, 0])
+
+        a_2 = np.array([2*x_close-x_far,2*y_close-y_far,0.04,50, 0])
+
+        a_3 = np.array([2*x_far-x_close,2*y_far-y_close,0.04,50, 0])
+
+        trajectory = [a_1,a_2,a_3]
+        self.traj = trajectory
+
+
 
     def is_reset(self):
         # ToDo :to get the
         if len(self.traj) == 0:
             return True
         return False
-
+    
+    def detector(self):
+        if self.current_obj_distance <0.05:
+            return True
+        return False
+  
     def euclidean_distance(self, x1, x2):
         return np.linalg.norm(x1 - x2)
 
