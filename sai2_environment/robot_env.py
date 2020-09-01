@@ -98,16 +98,26 @@ class RobotEnv(object):
         #     self._client.set_action_space()
 
         # TODO to find how to implement action here
-        # reach_flag = self.task.detector()
-        reach_flag = True
+        reach_flag = self.task.detector()
+        # reach_flag = True
+        print(reach_flag)
         if (reach_flag):
             self.task.spilt_trajectory()
             task_is_reset = False
             while not task_is_reset:    
-                reset_action = self.task.act_optimally()
-                self.step(reset_action)
+                reset_actio_split = self.task.act_optimally()
+                self.step(reset_actio_split)
                 # how to check if the environment is reset (Now it ends when the trajectory is done)
                 task_is_reset = self.task.is_reset()
+        print("out")
+        self.task.random_pose()
+        task_is_reset = False
+        while not task_is_reset:    
+            reset_action_random = self.task.act_optimally()
+            self.step(reset_action_random)
+            # how to check if the environment is reset (Now it ends when the trajectory is done)
+            task_is_reset = self.task.is_reset()   
+        print("random")
         
         self.task.reset_trajectory()
         task_is_reset = False
@@ -116,7 +126,7 @@ class RobotEnv(object):
             self.step(reset_action)
             # how to check if the environment is reset (Now it ends when the trajectory is done)
             task_is_reset = self.task.is_reset()
-
+        print("finish")
 
         if self._episodes % 10 == 0:
             print("Episode: {}; Elapsed Time: {} minutes".format(

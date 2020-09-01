@@ -553,6 +553,8 @@ class CameraHandler:
         if obj is None and self.marker_0_base is not None and self.marker_1_base is not None:
             obj = self.marker_0_base/2 + self.marker_1_base/2
         if obj is not None and target is not None:
+            target[2]=0
+            obj[2] = 0
             dis_obj2target_goal = np.linalg.norm(target-obj)
         # In case the target or obj cannot be detected by both cameras
         else:

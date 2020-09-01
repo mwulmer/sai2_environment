@@ -23,7 +23,7 @@ def main():
                    camera_available=True,
                    rotation_axis=(0, 0, 0))    
 
-    episodes = 10
+    episodes = 1
     steps = 500
 
     start_time = time.time()

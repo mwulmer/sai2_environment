@@ -26,7 +26,7 @@ class MoveObjectToTarget(Task):
             self.current_obj_position = self.get_puck_position()
             self.last_obj_position = self.current_obj_position
             self.total_distance = self.euclidean_distance(
-                self.goal_position, self.current_obj_position)
+            self.goal_position, self.current_obj_position)
         else:
             # setup the things that we need in the real world
             # self.goal_position = None
@@ -37,7 +37,6 @@ class MoveObjectToTarget(Task):
             self.current_obj_distance = self.camera_handler.grab_distance()
             self.last_obj_distance = self.current_obj_distance
             self.total_distance = self.camera_handler.grab_distance()
-            self.traj = self.reset_trajectory()
 
     def initialize_task(self):
         self.cumulative_reward = 0
@@ -80,7 +79,6 @@ class MoveObjectToTarget(Task):
             self.current_obj_distance = self.camera_handler.grab_distance()
             d_last = self.last_obj_distance
             d_current = self.current_obj_distance
-            
             # When detecting no enough markers at the very beginning
             if d_current == 1:
                 reward = 0
@@ -111,7 +109,6 @@ class MoveObjectToTarget(Task):
                 action = np.concatenate((action_pos, np.array([0,0])))
             else:
                 self.traj.pop(0)
-        print(self.traj)
         return action
 
     def plan_optimal_trajectory(self):
@@ -137,66 +134,71 @@ class MoveObjectToTarget(Task):
 
         return trajectory
 
-    def reset_trajectory(self):
-
+    def random_pose(self):
         
         obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
 
-        delta_x = marker1[0] - marker0[0]
-        delta_y = marker1[1] - marker0[1]
-
-        a_01 = np.array([marker1[0], marker1[1] + np.sign(delta_y)*0.15, 0.15, 50, 0])
-        a_02 = np.array([marker1[0], marker1[1] +
-                            np.sign(delta_y)*0.13, 0.04, 50, 0])
-        a_03 = np.array([marker1[0], marker1[1]-0.02, 0.03, 50, 0])
-                
-        #Set a predefined position for obj 
-        pre_defined_pos = np.array([0.375,-0.20,0,15])
-        
-        # Find obj and move the EE beside the obj
-        a1 = np.array([obj_pos[0], obj_pos[1] +
-                            np.sign(obj_pos[1])*0.16, 0.15, 50, 0])
-        # Go down 
-        a2 = np.array([obj_pos[0], obj_pos[1] +
-                            np.sign(obj_pos[1])*0.16, 0.04, 50, 0])
-        
-        #Push along y axis
-        a3 = np.array([obj_pos[0], pre_defined_pos[1], 0.04, 50, 0])
-
-        #Up 
-        a4 = np.array([obj_pos[0], pre_defined_pos[1], 0.15, 50, 0])
-
-        #Beside
-        if (obj_pos[0]>0.375):
-            a5 = np.array([obj_pos[0]+0.13, pre_defined_pos[1]-0.03, 0.15, 50, 0])
-            #Down
-            a6 = np.array([obj_pos[0]+0.13, pre_defined_pos[1]-0.03, 0.04, 50, 0])
-            #Push along x axis
-            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.03, 0.04, 50, 0])
-        
+        e_y = marker0[1]- marker1[1]
+        if (abs(e_y)>=0.02 and abs(e_y)<=0.07):
+            x_new,y_new = self.x_y_mid_perpendicular(obj_pos,marker0,marker1)
+            a_01 = np.array([x_new, y_new, 0.15, 50, 0])
+            a_02 = np.array([x_new, y_new, 0.04, 50, 0])
+            
+            offset = np.random.uniform(0.5,1.2)
+            # Move along the mid_perpendicular of marker0 and marker1
+            a_03 = np.array([obj_pos[0]+offset*(obj_pos[0]-x_new),obj_pos[1]+offset*(obj_pos[1]-y_new), 0.04, 50, 0])
+            a_04 = np.array([obj_pos[0]+offset*(obj_pos[0]-x_new),obj_pos[1]+offset*(obj_pos[1]-y_new), 0.15, 50, 0])
+            trajectory = [a_01,a_02,a_03,a_04]
         else:
-            a5 = np.array([obj_pos[0]-0.10, pre_defined_pos[1]-0.03, 0.15, 50, 0])
-            #Down
-            a6 = np.array([obj_pos[0]-0.10, pre_defined_pos[1]-0.03, 0.04, 50, 0])
-            #Push along x axis
-            a7 = np.array([pre_defined_pos[0], pre_defined_pos[1]-0.03, 0.04, 50, 0])
-                
-        print(delta_y)
-        if (abs(delta_y)<0.02 or abs(delta_y)>= 0.07 ):
-            trajectory = [a1, a2, a3, a4, a5, a6, a7]
-            print('origin')
+            trajectory = []
+        self.traj = trajectory
+    
+    def reset_trajectory(self):
+
+        obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
+        marker3, marker4, marker5 = self.camera_handler.get_targetmarkers()
+ 
+        if (np.sign(obj_pos[1])==np.sign(marker5[1])):
+            pre_x = np.random.uniform(0.3,0.6)
+            pre_y = np.random.uniform(-np.sign(marker5[1])*0.05,-np.sign(marker5[1])*0.2)
+            pre_defined_pos = np.array([pre_x,pre_y,0,15]) 
+            # Find obj and move the EE beside the obj
+            a1 = np.array([obj_pos[0], obj_pos[1] + np.sign(obj_pos[1])*0.14, 0.15, 50, 0])
+            # Go down 
+            a2 = np.array([obj_pos[0], obj_pos[1] + np.sign(obj_pos[1])*0.14, 0.03, 50, 0])
+            #Push along y axis
+            a3 = np.array([obj_pos[0], pre_defined_pos[1], 0.03, 50, 0])
+            #Up 
+            a4 = np.array([obj_pos[0], pre_defined_pos[1], 0.15, 50, 0])
         else:
-            trajectory = [a_01,a_02,a_03]
-            print('Tune')
+            #Set a predefined position for obj
+            pre_x = np.random.uniform(0.3,0.6)   
+            pre_defined_pos = np.array([pre_x,obj_pos[1],0,15])
+            # Find obj and move the EE beside the obj
+            if (obj_pos[0]<pre_x):
+                a1 = np.array([obj_pos[0]-0.13, obj_pos[1], 0.15, 50, 0])
+                # Go down 
+                a2 = np.array([obj_pos[0]-0.13, obj_pos[1], 0.03, 50, 0])
+                #Push along y axis
+                a3 = np.array([pre_x, pre_defined_pos[1], 0.03, 50, 0])
+                #Up 
+                a4 = np.array([pre_x, pre_defined_pos[1], 0.15, 50, 0])
+            else:
+                a1 = np.array([obj_pos[0]+0.13, obj_pos[1], 0.15, 50, 0])
+                # Go down 
+                a2 = np.array([obj_pos[0]+0.13, obj_pos[1], 0.03, 50, 0])
+                #Push along y axis
+                a3 = np.array([pre_x, pre_defined_pos[1], 0.03, 50, 0])
+                #Up 
+                a4 = np.array([pre_x, pre_defined_pos[1], 0.15, 50, 0])
 
-
-
-        # trajectory = [a_01,a_02,a_03,a1, a2, a3, a4, a5, a6, a7]
         
-        # trajectory = [a1, a2, a3, a4, a5, a6, a7]
+        trajectory = [a1, a2, a3, a4]
+        print(trajectory)
         self.traj = trajectory
 
     def spilt_trajectory(self):
+        
         obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
         marker3, marker4, marker5 = self.camera_handler.get_targetmarkers()
         dis_0 = self.euclidean_distance(marker0,marker5)
@@ -211,17 +213,17 @@ class MoveObjectToTarget(Task):
             y_close = marker1[1]
             x_far = marker0[0]
             y_far = marker0[1]
-        
+
+        # Move to the closest marker to the goal along the line between marker0 and marker1 
         a_1 = np.array([2*x_close-x_far,2*y_close-y_far,0.15,50, 0])
-
-        a_2 = np.array([2*x_close-x_far,2*y_close-y_far,0.04,50, 0])
-
-        a_3 = np.array([2*x_far-x_close,2*y_far-y_close,0.04,50, 0])
-
-        trajectory = [a_1,a_2,a_3]
+        # Down
+        a_2 = np.array([2*x_close-x_far,2*y_close-y_far,0.035,50, 0])
+        # Move out the object along the line between marker0 and marker1 
+        a_3 = np.array([1.7*x_far-0.7*x_close,1.7*y_far-0.7*y_close,0.035,50, 0])
+        # Up
+        a_4 = np.array([1.7*x_far-0.7*x_close,1.7*y_far-0.7*y_close,0.15,50, 0])
+        trajectory = [a_1,a_2,a_3,a_4]
         self.traj = trajectory
-
-
 
     def is_reset(self):
         # ToDo :to get the
@@ -230,9 +232,39 @@ class MoveObjectToTarget(Task):
         return False
     
     def detector(self):
-        if self.current_obj_distance <0.05:
+        print(self.current_obj_distance)
+        obj_pos,marker0,marker1 = self.camera_handler.get_current_obj()
+        marker3, marker4, marker5 = self.camera_handler.get_targetmarkers()
+        if abs(marker0[1]-marker3[1])<0.05 or abs(marker0[1]-marker4[1])<0.05  or abs(marker1[1]-marker3[1])<0.05  or abs(marker1[1]-marker4[1])<0.05 :
+            return True
+        if self.current_obj_distance<0.06:
             return True
         return False
+    
+    def x_y_mid_perpendicular(self,mid,pos0,pos1):
+        
+        vec_ori = pos0-pos1
+        vec_ori[2] = 0
+        vec_x = np.array([1,0,0])
+        vec_ori_norm =np.linalg.norm(vec_ori)
+        product = vec_ori.dot(vec_x)
+        theta = np.arccos(product/vec_ori_norm)
+
+        if (theta>1.57):
+            theta = 3.14-theta
+        
+        error_x = pos0[0]-pos1[0]
+        error_y = pos0[1]-pos1[1]
+
+        if ((error_x>0 and error_y>0) or (error_x<0 and error_y<0)) :
+            x_new = mid[0] - 0.11*np.sin(theta)* np.sign(mid[1])
+            y_new = mid[1] + 0.11*np.cos(theta)* np.sign(mid[1])
+        else:
+            x_new = mid[0] + 0.11*np.sin(theta)* np.sign(mid[1])
+            y_new = mid[1] + 0.11*np.cos(theta)* np.sign(mid[1])
+
+        return x_new,y_new
+
   
     def euclidean_distance(self, x1, x2):
         return np.linalg.norm(x1 - x2)
