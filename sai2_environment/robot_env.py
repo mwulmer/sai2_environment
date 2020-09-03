@@ -134,7 +134,7 @@ class RobotEnv(object):
 
         self._episodes += 1
         self.task.initialize_task()
-        return 1#self._get_obs()
+        return self._get_obs()
 
     def convert_image(self, im):
         return np.rollaxis(im, axis=2, start=0)/255.0
@@ -177,8 +177,8 @@ class RobotEnv(object):
             reward, done = self._compute_reward()
 
         info = None
-        # obs = self._get_obs()  # has to be before the contact reset \!/        
-        obs = 1
+        obs = self._get_obs()  # has to be before the contact reset \!/        
+        # obs = 1
         return obs, reward, done, info
 
     def take_action(self, action):
