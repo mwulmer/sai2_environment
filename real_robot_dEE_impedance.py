@@ -1,4 +1,3 @@
-import redis
 from sai2_environment.robot_env import RobotEnv
 from sai2_environment.action_space import ActionSpace
 
@@ -14,11 +13,12 @@ def main():
 
     action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
 
-    env = RobotEnv(name='move_object_to_target',
+    env = RobotEnv(domain_name='push_puck',
+                   task_name='easy',
                    simulation=True,
                    action_space=action_space,
                    action_frequency=20,
-                   render=True,
+                   render=False,
                    camera_available=True,
                    camera_res=(128, 128),
                    rotation_axis=(0, 0, 0))    
@@ -27,7 +27,6 @@ def main():
     steps = 500
 
     start_time = time.time()
-    queue = deque()    
 
     for episode in range(episodes):
         
@@ -42,9 +41,11 @@ def main():
             action = env.act_optimally()
 
             obs, reward, done, info = env.step(action)  
+            acc_reward += reward
 
-            if done:                
-                obs = env.reset()
+            if done:   
+                #print(acc_reward)             
+                #obs = env.reset()
                 continue
                 
             # if render:
@@ -56,6 +57,7 @@ def main():
             #     if key & 0xFF == ord('q') or key == 27:
             #         cv2.destroyAllWindows()
             #         break
+        print(acc_reward)
         env.close()
 
     
