@@ -207,8 +207,7 @@ class RobotEnv(core.Env):
         self._time_step = 0
         self._client.reset(self._episodes)
         # TODO do we want to set it every time or keep one action space per experiment?
-        if self._episodes != 0:
-            self._client.set_action_space()
+        self._client.set_action_space()
 
         self._episodes += 1
         self.task.initialize_task()
