@@ -6,12 +6,12 @@ from gym import spaces, core
 from ipdb import set_trace
 from scipy.spatial.transform import Rotation as Rot
 
-from sai2_environment.client import RedisClient
-from sai2_environment.action_space import *
-from sai2_environment.utils import name_to_task_class, Timer
-from sai2_environment.ranges import Range, RobotMinMaxScaler
-from sai2_environment.camera_handler import CameraHandler
-from sai2_environment.haptic_handler import HapticHandler
+from sai2_environment.utils.client import RedisClient
+from sai2_environment.utils.action_space import *
+from sai2_environment.utils.misc import name_to_task_class, Timer
+from sai2_environment.utils.ranges import Range, RobotMinMaxScaler
+from sai2_environment.handlers.camera_handler import CameraHandler
+from sai2_environment.handlers.haptic_handler import HapticHandler
 
 
 class RobotEnv(core.Env):
@@ -33,16 +33,12 @@ class RobotEnv(core.Env):
         camera_available=True,
         camera_res=(128, 128),
         rotation_axis=(False, False, False),
-        pixels=True,
-        proprioception=True,
-        haptics=True,
+        from_pixels=False,
     ):
 
         self.camera_available = camera_available
         self.full_name = domain_name + "_" + task_name
-        self.pixels = pixels
-        self.proprioception = proprioception
-        self.haptics = haptics
+        self.from_pixels = from_pixels
         self.camera_resolution = camera_res
         # connect to redis server
         hostname = "127.0.0.1" if simulation else "TUEIRSI-RL-001"
@@ -89,7 +85,7 @@ class RobotEnv(core.Env):
                     self._client, simulation, sensor_frequency=1000
                 )
             )
-            if self.haptics
+            if not self.from_pixels
             else None
         )
         self.camera_handler = CameraHandler.getInstance(
@@ -108,9 +104,7 @@ class RobotEnv(core.Env):
 
         time.sleep(1)
 
-        self.observation_space = self.make_observation_space(
-            self.pixels, self.proprioception, self.haptics
-        )
+        self.observation_space = self.make_observation_space()
 
         # TODO define what all the responsibilites of task are
         task_class = name_to_task_class(self.full_name)
@@ -225,11 +219,14 @@ class RobotEnv(core.Env):
           representing RGB values for an x-by-y pixel image, suitable
           for turning into a video.
         """
-        assert mode == "rgb_array", (
-            "only support rgb_array mode, given %s" % mode
-        )
         data = self.current_frame.transpose(1, 2, 0).copy()
-        return data
+        if mode == "rgb_array":
+            return data
+        elif mode == "human":
+            cv2.imshow("Simulator", data)
+            cv2.waitKey(1)
+        else:
+            print("only support rgb_array mode, given %s" % mode)
 
     def close(self):
         return 0
@@ -279,20 +276,21 @@ class RobotEnv(core.Env):
         haptic_feedback: (tau, contact) = ((7,n), (1,))
         """
         output = dict()
-        if self.pixels:
-            if self.env_config["simulation"]:
-                img = self._client.get_camera_frame()
-            else:
-                img = (
-                    self.camera_handler.get_color_frame()
-                    if self.camera_available
-                    else 0
-                )
-            camera_frame = self.convert_image(img)
-            self.current_frame = camera_frame
-            output["camera"] = self.current_frame
+        if self.env_config["simulation"]:
+            img = self._client.get_camera_frame()
+        else:
+            img = (
+                self.camera_handler.get_color_frame()
+                if self.camera_available
+                else 0
+            )
+        camera_frame = self.convert_image(img)
+        self.current_frame = camera_frame
+        output["camera"] = self.current_frame
 
-        if self.proprioception:
+        if self.from_pixels:
+            return self.current_frame
+        else:
             # retrieve robot state
             q, dq = self._client.get_robot_state()
             # normalize proprioception
@@ -301,7 +299,6 @@ class RobotEnv(core.Env):
             normalized_robot_state = np.concatenate((q, dq))
             output["proprioception"] = normalized_robot_state
 
-        if self.haptics:
             # retrieve haptics
             tau = self.haptic_handler.get_torques_matrix(
                 n=self.env_config["torque_seq_length"]
@@ -314,14 +311,13 @@ class RobotEnv(core.Env):
             normalized_haptic_feedback = (reversed__transposed_tau, contact)
             output["haptics"] = normalized_haptic_feedback
 
-        # TODO multiple outputs, right now for testing I only do pixels
-        return self.current_frame
+        return output["camera"], output["proprioception"], output["haptics"]
 
-    def make_observation_space(self, pixels, proprioception, haptics):
+    def make_observation_space(self):
         height = self.camera_resolution[0]
         width = self.camera_resolution[1]
         # TODO what is the prefered way to do this with multiple different obs
-        if pixels:
+        if self.from_pixels:
             shape = [3, height, width]
             observation_space = spaces.Box(
                 low=0, high=255, shape=shape, dtype=np.uint8

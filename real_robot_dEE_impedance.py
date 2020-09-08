@@ -1,5 +1,5 @@
 from sai2_environment.robot_env import RobotEnv
-from sai2_environment.action_space import ActionSpace
+from sai2_environment.utils.action_space import ActionSpace
 
 import numpy as np
 import time
@@ -49,6 +49,7 @@ def main():
             action = env.act_optimally()
 
             obs, reward, done, info = env.step(action)
+            env.render(mode="human")
             acc_reward += reward
 
             if done:
