@@ -1,4 +1,4 @@
-from sai2_environment.utils import Timer
+from sai2_environment.utils.misc import Timer
 from collections import deque
 import numpy as np
 import threading
@@ -21,7 +21,8 @@ class HapticHandler:
         self.client = client
         self.sensor_frequency = sensor_frequency
         self.haptic_thread = threading.Thread(
-            name="haptic_thread", target=self.get_haptic_feedback)
+            name="haptic_thread", target=self.get_haptic_feedback
+        )
         self.haptic_thread.start()
         self.torque_measurements = deque(maxlen=200)
         for i in range(100):
@@ -48,19 +49,15 @@ class HapticHandler:
         while True:
             contact = self.client.get_contact_occurence()
             self.contact_event = True if contact.any() else self.contact_event
-            #print("contact=", contact)
+            # print("contact=", contact)
 
     def get_torques_matrix(self, n=32):
-        
+
         return np.asarray([self.torque_measurements.pop() for i in range(n)])
 
     def contact_occured(self):
-        #check if contact occured since the last time the function was called
+        # check if contact occured since the last time the function was called
         contact_since_last_call = self.contact_event
         self.contact_event = False
         return contact_since_last_call
-
-    
-
-
 
