@@ -14,7 +14,7 @@ def main():
     action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
 
     env = RobotEnv(
-        domain_name="push_puck",
+        domain_name="reach_site",
         task_name="easy",
         simulation=True,
         action_space=action_space,
@@ -26,7 +26,7 @@ def main():
     )
 
     episodes = 10
-    steps = 500
+    steps = 200
 
     start_time = time.time()
 

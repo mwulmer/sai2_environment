@@ -1,8 +1,7 @@
 from sai2_environment.tasks.task import Task
 import numpy as np
+import psutil
 
-PUSH_HORIZONTAL = 0
-PUSH_VERTICAL = 1
 np.set_printoptions(precision=3, suppress=True)
 
 
@@ -14,6 +13,13 @@ class PushPuckEasy(Task):
         self._client = redis_client
         self._simulation = simulation
         self.camera_handler = camera_handler
+
+        # If simulated environment, check if simulation process is running
+        if self._simulation:
+            assert "sim01-push_puck_easy" in (
+                p.name() for p in psutil.process_iter()
+            ), "Simulator not running."
+
         self.max_episode_steps = 1000
         self.traj = []
         self.cumulative_reward = 0
@@ -26,7 +32,6 @@ class PushPuckEasy(Task):
         )
         self.CURRENT_POS_KEY = "sai2::ReinforcementLearning::current_position"
         self.DESIRED_POS_KEY = "sai2::ReinforcementLearning::desired_position"
-        self.lamda = 1  # Should equal max distance between peg and hole, assumed 1m, intentional typo here
         # scaling factor for reaching reward
         self.cr = 1
         # scaling factor for pushing reward
