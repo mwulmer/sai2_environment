@@ -1,5 +1,6 @@
 # sai2-environment
-TODO
+pip install redis pyrealsense2 opencv-contrib-python psutil
+
 current usage:
 ```
 /project_name
