@@ -1,5 +1,5 @@
 # sai2-environment
-pip install redis pyrealsense2 opencv-contrib-python
+pip install redis pyrealsense2 opencv-contrib-python psutil
 
 current usage:
 ```
