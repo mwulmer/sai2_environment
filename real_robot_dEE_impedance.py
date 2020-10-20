@@ -11,7 +11,7 @@ from collections import deque
 
 def main():
 
-    action_space = ActionSpace.MT_EE_POSE_IMPEDANCE
+    action_space = ActionSpace.DELTA_EE_POSE_IMPEDANCE
 
     env = RobotEnv(
         domain_name="reach_site",
@@ -21,7 +21,7 @@ def main():
         action_frequency=20,
         render=False,
         camera_available=True,
-        camera_res=(128, 128),
+        camera_res=(84, 84),
         rotation_axis=(0, 0, 0),
     )
 
@@ -29,7 +29,6 @@ def main():
     steps = 200
 
     start_time = time.time()
-
     for episode in range(episodes):
 
         print(
@@ -40,7 +39,8 @@ def main():
         obs = env.reset()
         acc_reward = 0
         for step in range(steps):
-            position = np.random.normal(loc=0.0, scale=0.1, size=(3,))
+            position = np.random.normal(loc=0.0, scale=0.0, size=(3,))
+            position = np.array([0, 0, 0])
             stiffness_linear = np.random.normal(loc=0.0, scale=10, size=(1,))
             stiffness_rot = np.random.normal(loc=0.0, scale=1, size=(1,))
             action = np.concatenate(
@@ -53,7 +53,7 @@ def main():
             acc_reward += reward
 
             if done:
-                # print(acc_reward)
+
                 # obs = env.reset()
                 continue
 

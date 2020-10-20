@@ -38,11 +38,12 @@ class RedisClient(object):
 
     def get_camera_frame(self) -> np.array:
         data = self.redis2array(self.get(self.keys.CAMERA_DATA_KEY))
-        (w, h) = self._camera_resolution
+        (w, h) = (128, 128)
         b = np.reshape(data[0::3], (w, h))
         g = np.reshape(data[1::3], (w, h))
         r = np.reshape(data[2::3], (w, h))
-        frame = np.flip((np.dstack((r, g, b))).astype(np.uint8), 0)
+        frame = np.flip((np.dstack((r, g, b))), 0)
+
         return frame
 
     def get_sensed_contact(self):

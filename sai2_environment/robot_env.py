@@ -5,6 +5,7 @@ import pyrealsense2 as rs
 from gym import spaces, core
 from ipdb import set_trace
 from scipy.spatial.transform import Rotation as Rot
+from skimage.transform import resize
 
 from sai2_environment.utils.client import RedisClient
 from sai2_environment.utils.action_space import *
@@ -65,7 +66,6 @@ class RobotEnv(core.Env):
         self._robot_action = get_robot_action(
             action_space, isotropic_gains, rotation_axis
         )
-        # self._robot_action = RobotAction(action_space, isotropic_gains, rotation_axis=rotation_axis)
 
         self._client.init_action_space(self._robot_action)
         self._episodes = 0
@@ -284,12 +284,19 @@ class RobotEnv(core.Env):
                 if self.camera_available
                 else 0
             )
-        camera_frame = self.convert_image(img)
-        self.current_frame = camera_frame
-        output["camera"] = self.current_frame
+        self.current_frame = img
+
+        # resize to desired dimensions
+        camera_frame = resize(
+            img, (self.camera_resolution[0], self.camera_resolution[1]),
+        )
+
+        # rollaxis for tensor and make it unint8
+        camera_frame = self.convert_image(camera_frame).astype(np.uint8)
+        output["camera"] = camera_frame
 
         if self.from_pixels:
-            return self.current_frame
+            return camera_frame
         else:
             # retrieve robot state
             q, dq = self._client.get_robot_state()

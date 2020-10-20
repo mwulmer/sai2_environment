@@ -35,6 +35,8 @@ class ReachSiteEasy(Task):
         self.lambda1 = None
 
         self.goal_position = None
+        self.initial_position = None
+        self.end_effector_moved = False
 
         self.reach_reward = []
         self.finished_reward = []
@@ -44,6 +46,8 @@ class ReachSiteEasy(Task):
         # self.print_reward_statistics()
         self.reach_reward = []
         self.finished_reward = []
+        self.initial_position = self.get_ee_position()
+        self.end_effector_moved = False
         if self._simulation:
             self.goal_position = self._client.redis2array(
                 self._client.get(self.GOAL_POSITION_KEY)
@@ -62,6 +66,15 @@ class ReachSiteEasy(Task):
 
     def compute_reward(self):
         ee_pos = self.get_ee_position()
+        # don't hand out reward if the arm did not move from its initial position
+        if (
+            not self.end_effector_moved
+            and self.euclidean_distance(self.initial_position, ee_pos) > 0.02
+        ):
+            self.end_effector_moved = True
+            reward = 0
+            self.reach_reward.append(reward)
+            return reward, False
 
         # print("Not reached", end="\r")
         if not self.is_in_goal(ee_pos):
