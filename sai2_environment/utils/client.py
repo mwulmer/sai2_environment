@@ -44,7 +44,7 @@ class RedisClient(object):
         r = np.reshape(data[2::3], (w, h))
         frame = np.flip((np.dstack((r, g, b))), 0)
 
-        return frame
+        return frame.astype(np.uint8)
 
     def get_sensed_contact(self):
         # currently the simulator returns (1,) and real robot returns (7,)
