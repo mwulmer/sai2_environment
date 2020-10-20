@@ -219,7 +219,7 @@ class RobotEnv(core.Env):
           representing RGB values for an x-by-y pixel image, suitable
           for turning into a video.
         """
-        data = self.current_frame.transpose(1, 2, 0).copy()
+        data = self.current_frame.copy()
         if mode == "rgb_array":
             return data
         elif mode == "human":
