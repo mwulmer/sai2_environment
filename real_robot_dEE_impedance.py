@@ -18,7 +18,7 @@ def main():
         task_name="easy",
         simulation=True,
         action_space=action_space,
-        action_frequency=20,
+        action_frequency=10,
         render=False,
         camera_available=True,
         camera_res=(84, 84),
@@ -26,7 +26,7 @@ def main():
     )
 
     episodes = 10
-    steps = 200
+    steps = 1000
 
     start_time = time.time()
     for episode in range(episodes):
@@ -39,17 +39,17 @@ def main():
         obs = env.reset()
         acc_reward = 0
         for step in range(steps):
-            position = np.random.normal(loc=0.0, scale=0.0, size=(3,))
-            position = np.array([0, 0, 0])
+            position = np.random.normal(loc=0.0, scale=0.2, size=(3,))
+            # position = np.array([0, 0, 0])
             stiffness_linear = np.random.normal(loc=0.0, scale=10, size=(1,))
             stiffness_rot = np.random.normal(loc=0.0, scale=1, size=(1,))
             action = np.concatenate(
                 (position, stiffness_linear, stiffness_rot)
             )
-            action = env.act_optimally()
+            # action = env.act_optimally()
 
             obs, reward, done, info = env.step(action)
-            env.render(mode="human")
+            # env.render(mode="human")
             acc_reward += reward
 
             if done:

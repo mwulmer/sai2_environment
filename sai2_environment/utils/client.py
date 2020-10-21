@@ -80,7 +80,11 @@ class RedisClient(object):
         return q, dq
 
     def redis2array(self, serialized_arr: str) -> np.array:
-        return np.array(json.loads(serialized_arr))
+        try:
+            out = np.array(json.loads(serialized_arr))
+        except ValueError:
+            print("Decoding JSON from redis server has failed!")
+        return out
 
     def take_action(self, action):
         self.set(self.keys.ACTION_KEY, self.array2redis(action))
