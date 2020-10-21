@@ -66,34 +66,34 @@ class ReachSiteEasy(Task):
 
     def compute_reward(self):
         ee_pos = self.get_ee_position()
-        # don't hand out reward if the arm did not move from its initial position
-        if (
-            not self.end_effector_moved
-            and self.euclidean_distance(self.initial_position, ee_pos) > 0.02
-        ):
-            self.end_effector_moved = True
-            reward = 0
-            self.reach_reward.append(reward)
-            return reward, False
+        reward = 0
 
-        # print("Not reached", end="\r")
-        if not self.is_in_goal(ee_pos):
-            reward = self.cr * (
-                1
-                - (
-                    np.tanh(
-                        self.lambda1
-                        * (
-                            self.euclidean_distance(self.goal_position, ee_pos)
-                            - 0.1
+        # we only hand out reward if the end-effector moved.
+        if self.end_effector_moved:
+            if not self.is_in_goal(ee_pos):
+                reward = self.cr * (
+                    1
+                    - (
+                        np.tanh(
+                            self.lambda1
+                            * (
+                                self.euclidean_distance(
+                                    self.goal_position, ee_pos
+                                )
+                                - 0.1
+                            )
                         )
                     )
                 )
-            )
-            self.reach_reward.append(reward)
+                self.reach_reward.append(reward)
+            else:
+                reward = 1
+                self.finished_reward.append(reward)
+        elif self.euclidean_distance(self.initial_position, ee_pos) > 0.02:
+            self.end_effector_moved = True
         else:
-            reward = 1
-            self.finished_reward.append(reward)
+            reward = 0
+            self.reach_reward.append(reward)
 
         return reward, False
 
