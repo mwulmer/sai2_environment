@@ -9,7 +9,7 @@ from skimage.transform import resize
 
 from sai2_environment.utils.client import RedisClient
 from sai2_environment.utils.action_space import *
-from sai2_environment.utils.misc import name_to_task_class, Timer
+from sai2_environment.utils.misc import name_to_task_class, Timer, FrameStacker
 from sai2_environment.utils.ranges import Range, RobotMinMaxScaler
 from sai2_environment.handlers.camera_handler import CameraHandler
 from sai2_environment.handlers.haptic_handler import HapticHandler
@@ -32,21 +32,25 @@ class RobotEnv(core.Env):
         action_frequency=20,
         torque_seq_length=32,
         camera_available=True,
-        camera_res=(128, 128),
         rotation_axis=(False, False, False),
         from_pixels=False,
+        frame_stack=3,
+        mod_shapes=dict(
+            cam=(3, 128, 128), x=None, dx=None, q=None, dq=None, tau=None
+        ),
     ):
 
+        self.mod_shapes = mod_shapes
         self.camera_available = camera_available
         self.full_name = domain_name + "_" + task_name
         self.from_pixels = from_pixels
-        self.camera_resolution = camera_res
+        self.camera_resolution = (mod_shapes["cam"][1], mod_shapes["cam"][2])
         # connect to redis server
         hostname = "127.0.0.1" if simulation else "TUEIRSI-RL-001"
         self.env_config = {
             "simulation": simulation,
             "render": render,
-            "camera_resolution": camera_res,
+            "camera_resolution": self.camera_resolution,
             "camera_frequency": 30,
             "hostname": hostname,
             "port": 6379,
@@ -103,6 +107,8 @@ class RobotEnv(core.Env):
             cv2.namedWindow("Simulator", cv2.WINDOW_NORMAL)
 
         time.sleep(1)
+
+        self.frame_stacker = FrameStacker(self.mod_shapes["cam"], frame_stack)
 
         self.observation_space = self.make_observation_space()
 
@@ -276,6 +282,9 @@ class RobotEnv(core.Env):
         haptic_feedback: (tau, contact) = ((7,n), (1,))
         """
         output = dict()
+
+        # First the camera observation
+
         if self.env_config["simulation"]:
             img = self._client.get_camera_frame()
         else:
@@ -293,19 +302,26 @@ class RobotEnv(core.Env):
 
         # rollaxis for tensor and make it unint8
         camera_frame = self.convert_image(camera_frame).astype(np.uint8)
-        output["camera"] = camera_frame
+        self.frame_stacker.add(camera_frame)
 
-        if self.from_pixels:
-            return camera_frame
-        else:
-            # retrieve robot state
-            q, dq = self._client.get_robot_state()
-            # normalize proprioception
-            q = self.scaler.q_scaler.transform([q])[0]
+        output["cam"] = self.frame_stacker.get()
+
+        if self.mod_shapes["x"]:
+            output["x"] = self._client.get_current_position()
+
+        if self.mod_shapes["dx"]:
+            output["dx"] = self._client.get_current_linear_velocity()
+
+        if self.mod_shapes["q"]:
+            q = self._client.get_joint_angles()
+            output["q"] = self.scaler.q_scaler.transform([q])[0]
+
+        if self.mod_shapes["dq"]:
+            dq = self._client.get_joint_velocities()
             dq = self.scaler.dq_scaler.transform([dq])[0]
-            normalized_robot_state = np.concatenate((q, dq))
-            output["proprioception"] = normalized_robot_state
+            output["dq"] = dq
 
+        if self.mod_shapes["tau"]:
             # retrieve haptics
             tau = self.haptic_handler.get_torques_matrix(
                 n=self.env_config["torque_seq_length"]
@@ -315,27 +331,49 @@ class RobotEnv(core.Env):
             tau = self.scaler.tau_scaler.transform(tau)
             reversed__transposed_tau = np.transpose(tau[::-1])
 
-            normalized_haptic_feedback = (reversed__transposed_tau, contact)
-            output["haptics"] = normalized_haptic_feedback
+            output["tau"] = reversed__transposed_tau
+            output["contact"] = contact
 
-        return output["camera"], output["proprioception"], output["haptics"]
+        return output
 
     def make_observation_space(self):
-        height = self.camera_resolution[0]
-        width = self.camera_resolution[1]
-        # TODO what is the prefered way to do this with multiple different obs
-        if self.from_pixels:
-            shape = [3, height, width]
-            observation_space = spaces.Box(
-                low=0, high=255, shape=shape, dtype=np.uint8
+
+        observation_space = dict()
+
+        if self.mod_shapes["cam"]:
+            observation_space["cam"] = spaces.Box(
+                low=0, high=255, shape=self.mod_shapes["cam"], dtype=np.uint8,
             )
-        else:
-            cam, proprio, haptic = self._get_obs()
-            observation_space = {
-                "camera": cam.shape,
-                "proprioception": proprio.shape,
-                "haptic": (haptic[0].shape, haptic[1].shape),
-            }
+
+        if self.mod_shapes["x"]:
+            observation_space["x"] = spaces.Box(
+                low=np.array([0.2, -0.8, 0.002]),
+                high=np.array([0.8, 0.8, 0.4]),
+                shape=self.mod_shapes["x"],
+                dtype=np.float32,
+            )
+        if self.mod_shapes["dx"]:
+            observation_space["dx"] = spaces.Box(
+                low=0, high=0.12, shape=self.mod_shapes["dx"], dtype=np.float32
+            )
+
+        if self.mod_shapes["q"]:
+            observation_space["q"] = spaces.Box(
+                low=0, high=1, shape=self.mod_shapes["q"], dtype=np.float32
+            )
+
+        if self.mod_shapes["dq"]:
+            observation_space["dq"] = spaces.Box(
+                low=0, high=1, shape=self.mod_shapes["dq"], dtype=np.float32
+            )
+
+        if self.mod_shapes["tau"]:
+            observation_space["tau"] = spaces.Box(
+                low=-1 * np.array([85, 85, 85, 85, 10, 10, 10]),
+                high=np.array([85, 85, 85, 85, 10, 10, 10]),
+                shape=self.mod_shapes["tau"],
+                dtype=np.float32,
+            )
 
         return observation_space
 

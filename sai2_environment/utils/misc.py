@@ -4,6 +4,8 @@ Adopted from https://github.com/stepjam/RLBench/blob/master/rlbench/utils.py
 import importlib
 import time
 from ipdb import set_trace
+from collections import deque
+import numpy as np
 
 
 class InvalidTaskName(Exception):
@@ -48,3 +50,19 @@ class Timer(object):
         self._t_curr = time.time_ns()
         self._t_next = self._t_curr + self._ns_update_interval
         self._update_counter += 1
+
+
+class FrameStacker(object):
+    def __init__(self, obs_shape, k):
+        self._k = k
+        self._frames = deque([], maxlen=k)
+        for i in range(self._k):
+            self._frames.append(np.empty((obs_shape), dtype=np.uint8))
+
+    def get(self):
+        assert len(self._frames) == self._k
+        return np.concatenate(list(self._frames), axis=0)
+
+    def add(self, frame):
+        self._frames.append(frame)
+

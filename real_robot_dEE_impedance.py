@@ -21,8 +21,10 @@ def main():
         action_frequency=10,
         render=False,
         camera_available=True,
-        camera_res=(84, 84),
         rotation_axis=(0, 0, 0),
+        mod_shapes=dict(
+            cam=(3, 84, 84), x=(3,), dx=(3,), q=None, dq=None, tau=None
+        ),
     )
 
     episodes = 10
@@ -49,23 +51,12 @@ def main():
             # action = env.act_optimally()
 
             obs, reward, done, info = env.step(action)
+            print(obs["cam"].shape, obs["x"].shape, obs["dx"].shape)
             # env.render(mode="human")
             acc_reward += reward
 
             if done:
-
-                # obs = env.reset()
                 continue
-
-            # if render:
-            #     im = obs[0]
-            #     if im is not None:
-            #         im = np.rollaxis(im, 0, 3)
-            #         cv2.imshow('RealSense',im)
-            #     key = cv2.waitKey(1)
-            #     if key & 0xFF == ord('q') or key == 27:
-            #         cv2.destroyAllWindows()
-            #         break
 
     print(
         "Action frequency: {}".format(

@@ -9,7 +9,7 @@ class ActionSpace(Enum):
     NONE = 0
     """
     Digits Notation:
-    | Space | Abs/Delta | Dyn decoup/ impedance |
+    | Space | Abs/Delta | Dyn decoup/ impedance / variable impedance |
     """
     # anisotropic: joints (7) Kp/stiffness (7)
     # isotropic: joints (7) Kp/stiffness (1)
@@ -29,7 +29,9 @@ class ActionSpace(Enum):
     ABS_EE_POSE_IMPEDANCE = 212
     DELTA_EE_POSE_IMPEDANCE = 222
 
+    #
     MT_EE_POSE_IMPEDANCE = 232
+    DELTA_EE_POSE_VAR_IMPEDANCE = 223
 
 
 def get_robot_action(action_space_enum, isotropic_gains, rotation_axis):

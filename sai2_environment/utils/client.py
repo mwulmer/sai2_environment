@@ -79,6 +79,18 @@ class RedisClient(object):
         dq = self.redis2array(self.get(self.keys.JOINT_VELOCITIES_KEY))
         return q, dq
 
+    def get_joint_angles(self):
+        return self.redis2array(self.get(self.keys.JOINT_ANGLES_KEY))
+
+    def get_joint_velocities(self):
+        return self.redis2array(self.get(self.keys.JOINT_VELOCITIES_KEY))
+
+    def get_current_position(self):
+        return self.redis2array(self.get(self.keys.CURRENT_POS_KEY))
+
+    def get_current_linear_velocity(self):
+        return self.redis2array(self.get(self.keys.CURRENT_VEL_KEY))
+
     def redis2array(self, serialized_arr: str) -> np.array:
         try:
             out = np.array(json.loads(serialized_arr))
